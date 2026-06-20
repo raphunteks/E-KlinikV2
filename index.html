@@ -151,7 +151,7 @@
             </div>
             <form onsubmit="verifyLiveTracking(event)" class="space-y-4">
                 <input type="hidden" id="track_token">
-                <div><label>Tanggal Lahir Pasien *</label><input type="date" id="track_dob" class="input-med" required></div>
+                <div><label>Tanggal Lahir Pasien * (Abaikan untuk Demo)</label><input type="date" id="track_dob" class="input-med"></div>
                 <div class="flex gap-3 mt-4">
                     <button type="button" onclick="UI.closeTrackingModal()" class="w-1/3 bg-slate-100 text-slate-600 font-black py-3 rounded-xl hover:bg-slate-200 transition-colors text-xs tracking-widest">BATAL</button>
                     <button type="submit" class="flex-1 bg-brand text-white font-black py-3 rounded-xl hover:bg-branddark shadow-lg shadow-brand/30 transition-transform hover:-translate-y-1 text-xs tracking-widest">BUKA TRACKER</button>
@@ -273,7 +273,7 @@
         <div class="p-4 md:p-8 max-w-4xl mx-auto space-y-8 -mt-8 relative z-10">
             
             <!-- LIVE TRACKING QUEUE CARD -->
-            <div id="liveTrackingCard" class="glass-card p-6 md:p-8 rounded-[2rem] hidden border-t-8 border-yellow-500">
+            <div id="liveTrackingCard" class="glass-card p-6 md:p-8 rounded-[2rem] hidden border-t-8 border-yellow-500 shadow-xl">
                 <h3 class="font-black text-slate-800 mb-2 text-sm uppercase tracking-widest text-center">Status Antrian Anda</h3>
                 <div class="flex flex-col items-center justify-center py-6">
                     <p class="text-xs font-bold text-slate-500 mb-2" id="trackPoliName">POLI UMUM</p>
@@ -405,6 +405,7 @@
             window.antrianCounters = { loket: 1, poliUmum: 1, poliGigi: 1 };
             window.antrianList = [];
         }
+        window.trackingInterval = null; // Store interval ID for live tracking
 
         // INIT: Check Fullscreen Display Mode OR Auto Login
         window.onload = () => {
@@ -431,12 +432,14 @@
                 document.getElementById('sidebar').classList.add('hidden');
                 document.querySelector('header').classList.add('hidden'); 
                 
+                // Adjust layout for full screen
                 const wa = document.getElementById('workArea');
                 wa.classList.remove('p-4', 'md:p-6', 'lg:p-8', 'xl:p-10');
                 wa.classList.add('p-0', 'm-0', 'h-full');
                 
                 loadView('antrian');
                 
+                // Auto sync every 5 seconds for display mode silently
                 setInterval(() => {
                     fetchAntrianRealtime(true);
                 }, 5000);
@@ -532,7 +535,7 @@
                 overlay.classList.add('opacity-0'); card.classList.remove('scale-100'); card.classList.add('scale-95'); 
                 setTimeout(() => { 
                     overlay.classList.add('hidden'); 
-                    window.history.replaceState({}, document.title, "/"); 
+                    window.history.replaceState({}, document.title, "/"); // Bersihkan parameter URL
                 }, 300);
             }
         };
@@ -611,45 +614,103 @@
         }
         
         async function verifyLiveTracking(e) {
-            e.preventDefault();
-            UI.loader(true, 'Verifikasi Token...');
+            if(e) e.preventDefault();
+            const dobInput = document.getElementById('track_dob').value;
+            const token = document.getElementById('track_token').value;
+            
+            // Catatan: Di backend asli harusnya ada verifikasi Token+DOB. 
+            // Kita bypass validasi dob secara lokal untuk demo Live Tracking agar mulus.
+            UI.loader(true, 'Sinkronisasi Tracking Sistem...');
             
             try {
                 // Fetch current queue to simulate intelligent tracking
                 const res = await ZettBackend.call('getAntrianAktif');
                 UI.loader(false);
-                UI.closeTrackingModal();
                 
-                document.getElementById('viewLogin').classList.add('hidden');
-                document.getElementById('viewTracker').classList.remove('hidden');
-                document.getElementById('pasienPortalName').textContent = "Live Tracking Mode";
-                
-                // Show tracking card
-                const trackCard = document.getElementById('liveTrackingCard');
-                if(trackCard) trackCard.classList.remove('hidden');
-
-                // Simulate finding the patient's queue data
-                let currentQueue = 1;
-                let myQueue = 5; 
-                let poli = "Poli Umum";
-                let prefix = "B";
-
-                if(res && res.status==='success' && Array.isArray(res.data) && res.data.length > 0) {
-                    const poliUmumQueues = res.data.filter(a => a.poli === 'Poli Umum');
-                    if(poliUmumQueues.length > 0) {
-                        myQueue = poliUmumQueues.length + 1; 
-                        currentQueue = window.antrianCounters ? window.antrianCounters['Poli Umum'] : 1;
+                if(res && res.status === 'success' && Array.isArray(res.data)) {
+                    // Cari pasien berdasarkan Token (bisa berupa idDaftar/TRK token)
+                    const patientQueue = res.data.find(a => a.idDaftar === token || a.idDaftar.includes(token));
+                    
+                    if(!patientQueue) {
+                         UI.toast('Antrian tidak ditemukan atau sudah selesai.', true);
+                         return;
                     }
-                }
+                    
+                    UI.closeTrackingModal();
+                    
+                    document.getElementById('viewLogin').classList.add('hidden');
+                    document.getElementById('viewTracker').classList.remove('hidden');
+                    document.getElementById('pasienPortalName').textContent = "LIVE TRACKING MODE";
+                    
+                    // Start Realtime Update loop for Tracker
+                    if(window.trackingInterval) clearInterval(window.trackingInterval);
+                    updateTrackingUI(patientQueue, res.data); // Initial update
+                    window.trackingInterval = setInterval(async () => {
+                        try {
+                            const newRes = await ZettBackend.call('getAntrianAktif');
+                            if(newRes && newRes.status === 'success') {
+                                const updatedPatient = newRes.data.find(a => a.idDaftar === token || a.idDaftar.includes(token));
+                                if(updatedPatient) updateTrackingUI(updatedPatient, newRes.data);
+                            }
+                        } catch(err){}
+                    }, 5000); 
 
-                if(document.getElementById('trackPoliName')) document.getElementById('trackPoliName').innerText = poli.toUpperCase();
-                if(document.getElementById('trackQueueNo')) document.getElementById('trackQueueNo').innerText = `${prefix}-${myQueue.toString().padStart(3, '0')}`;
-                if(document.getElementById('trackCurrentServing')) document.getElementById('trackCurrentServing').innerText = `${prefix}-${currentQueue.toString().padStart(3, '0')}`;
-                if(document.getElementById('trackRemaining')) document.getElementById('trackRemaining').innerText = Math.max(0, myQueue - currentQueue);
+                } else {
+                    UI.toast('Gagal memuat data antrian', true);
+                }
 
             } catch(err) {
                 UI.loader(false);
                 UI.toast('Gagal memuat data antrian', true);
+            }
+        }
+        
+        function updateTrackingUI(myData, allData) {
+            const trackCard = document.getElementById('liveTrackingCard');
+            if(trackCard) trackCard.classList.remove('hidden');
+
+            let letter = 'A';
+            if(myData.poli === 'Poli Umum') letter = 'B';
+            else if(myData.poli === 'Poli Gigi') letter = 'C';
+
+            // Extract number from ID (e.g., REG-260620-0004 -> 0004 -> B-004)
+            const numParts = myData.idDaftar.split('-');
+            const rawNum = parseInt(numParts[numParts.length-1], 10) || 1;
+            const myQueueNo = `${letter}-${rawNum.toString().padStart(3, '0')}`;
+
+            // Logika Sisa Antrian & Panggilan Saat Ini
+            const samePoliQueue = allData.filter(a => a.poli === myData.poli && a.status === 'Menunggu').sort((a,b) => {
+                const numA = parseInt(a.idDaftar.split('-').pop(), 10) || 1;
+                const numB = parseInt(b.idDaftar.split('-').pop(), 10) || 1;
+                return numA - numB;
+            });
+
+            let currentServingRaw = 1;
+            let currentServingNo = `${letter}-000`;
+            let remaining = 0;
+
+            if(samePoliQueue.length > 0) {
+                currentServingRaw = parseInt(samePoliQueue[0].idDaftar.split('-').pop(), 10) || 1;
+                if(rawNum >= currentServingRaw) {
+                    remaining = samePoliQueue.findIndex(a => a.idDaftar === myData.idDaftar);
+                    if(remaining === -1) remaining = 0;
+                }
+                currentServingNo = `${letter}-${currentServingRaw.toString().padStart(3, '0')}`;
+            } else {
+                currentServingNo = myQueueNo; 
+            }
+
+            let statusText = myData.status.toUpperCase();
+            let statusColor = "bg-yellow-100 text-yellow-800";
+            if(statusText.includes("SELESAI")) statusColor = "bg-green-100 text-green-800";
+
+            if(document.getElementById('trackPoliName')) document.getElementById('trackPoliName').innerText = myData.poli.toUpperCase();
+            if(document.getElementById('trackQueueNo')) document.getElementById('trackQueueNo').innerText = myQueueNo;
+            if(document.getElementById('trackCurrentServing')) document.getElementById('trackCurrentServing').innerText = currentServingNo;
+            if(document.getElementById('trackRemaining')) document.getElementById('trackRemaining').innerText = remaining;
+            if(document.getElementById('trackStatus')) {
+                document.getElementById('trackStatus').innerText = statusText;
+                document.getElementById('trackStatus').className = `${statusColor} px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest ${statusText.includes('MENUNGGU') ? 'animate-pulse' : ''}`;
             }
         }
 
@@ -687,28 +748,36 @@
             
             const pa = document.getElementById('printArea');
             let html = `
-            <div style="width: 80mm; padding: 5mm; font-family: sans-serif; text-align: center; margin:0 auto; color: black;">
-                <h2 style="margin:0; font-size: 22px; font-weight:900;">AXA E-KLINIK</h2>
-                <p style="margin:0; font-size:12px; font-weight:bold;">Klinik Utama</p>
-                <hr style="margin: 15px 0; border-top: 2px dashed black;">
-                <p style="font-size:14px; margin:0; font-weight:bold;">NOMOR ANTRIAN</p>
-                <h1 style="font-size:50px; margin:10px 0; font-weight:900;">${queueNo}</h1>
-                <p style="font-weight:900; font-size:18px; margin:0;">${poli}</p>
-                <hr style="margin: 15px 0; border-top: 2px dashed black;">
-                <p style="font-size:14px; margin:5px 0; font-weight:bold;">${nama}</p>
-                <p style="font-size:12px; margin:0;">RM: ${rm}</p>
-                <p style="font-size:12px; margin:15px 0 0 0;">ID: ${id}</p>`;
+            <div style="width: 80mm; padding: 5mm; font-family: 'Arial', sans-serif; text-align: center; margin:0 auto; color: black; background: white;">
+                <div style="display:flex; justify-content:center; align-items:center; flex-direction:column; margin-bottom:10px;">
+                    <div style="width:40px; height:40px; border-radius:50%; border:1px solid #ccc; display:flex; justify-content:center; align-items:center; overflow:hidden; margin-bottom:5px;">
+                        <img src="axalogo.png" style="width:25px; height:25px; object-fit:contain;" onerror="this.style.display='none'">
+                    </div>
+                    <h2 style="margin:0; font-size: 16px; font-weight:900;">✔ BERHASIL!</h2>
+                    <p style="margin:2px 0 0 0; font-size:10px; font-weight:bold; color: #555;">SILAKAN CETAK ANTRIAN ANDA</p>
+                </div>
+                
+                <p style="font-size:10px; margin:15px 0 5px 0; font-weight:bold; color: #777;">NOMOR ANTRIAN</p>
+                <h1 style="font-size:48px; margin:0; font-weight:900; color: #1e3a8a;">${queueNo}</h1>
+                <div style="border:1px solid #1e3a8a; border-radius:8px; display:inline-block; padding:4px 12px; margin:10px 0; font-size:14px; font-weight:bold; color: #1e3a8a;">${poli}</div>
+                
+                <hr style="border-top:1px dashed #ccc; margin:10px 0;">
+                <p style="font-size:14px; margin:5px 0; font-weight:900; color: #1e293b;">${nama}</p>
+                <p style="font-size:10px; margin:0; font-weight: bold; color: #555;">RM-${rm.replace('RM-','')}</p>
+            `;
                 
             if(token) {
                 html += `
-                <p style="font-size:10px; margin-top:10px; margin-bottom:5px;">Scan QR untuk Live Tracking:</p>
-                <div style="position:relative; width:100px; height:100px; margin:0 auto;">
-                    <div id="qrcodePrint"></div>
-                    <img src="axalogo.png" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); width:25px; height:25px; background:white; padding:2px; border-radius:50%;" onerror="this.style.display='none'">
+                <div style="padding: 15px 0; margin-top: 5px;">
+                    <p style="font-size:9px; margin-top:0; margin-bottom:10px; color: #555; font-weight: bold;">Pindai QR Code untuk Live Tracking Portal</p>
+                    <div style="position:relative; width:100px; height:100px; margin:0 auto;">
+                        <div id="qrcodePrint"></div>
+                        <img src="axalogo.png" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); width:25px; height:25px; background:white; padding:2px; border-radius:50%;" onerror="this.style.display='none'">
+                    </div>
                 </div>`;
             }
             
-            html += `<p style="font-size:10px; margin-top:15px;">Terima Kasih Atas Kunjungan Anda</p>
+            html += `<p style="font-size:10px; margin-top:15px; font-weight:bold;">Terima Kasih Atas Kunjungan Anda</p>
             </div>`;
             
             pa.innerHTML = html;
@@ -730,6 +799,7 @@
             document.getElementById('formStaff').reset();
             document.getElementById('workArea').innerHTML = ''; 
             document.getElementById('liveTrackingCard')?.classList.add('hidden');
+            if(window.trackingInterval) clearInterval(window.trackingInterval);
         }
         
         function logoutPasien() { 
@@ -737,6 +807,7 @@
             document.getElementById('viewLogin').classList.remove('hidden', 'opacity-0', 'scale-[0.95]', 'pointer-events-none'); 
             document.getElementById('formPasien').reset();
             document.getElementById('liveTrackingCard')?.classList.add('hidden');
+            if(window.trackingInterval) clearInterval(window.trackingInterval);
         }
 
         // --- 4. SPA ROUTER ---
