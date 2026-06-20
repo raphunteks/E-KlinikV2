@@ -220,8 +220,8 @@
             <div class="glass-card p-6 md:p-8 rounded-[2rem]">
                 <h3 class="font-black text-brand mb-6 border-b border-slate-200 pb-3 text-xl flex items-center"><i class="fas fa-file-pdf mr-3 text-brand"></i> Unduh Berkas Medis</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <button type="button" class="bg-white/80 border-2 border-white font-black text-slate-700 py-5 px-6 rounded-2xl hover:border-brand hover:text-brand shadow-sm transition-all flex justify-between items-center group" onclick="UI.customAlert('Pemberitahuan', 'Fitur Unduh Hasil Laboratorium (PDF) akan diaktifkan sepenuhnya saat sistem dalam mode produksi akhir.')"><span>Hasil Laboratorium</span> <i class="fas fa-download text-slate-300 group-hover:text-brand text-xl"></i></button>
-                    <button type="button" class="bg-white/80 border-2 border-white font-black text-slate-700 py-5 px-6 rounded-2xl hover:border-brand hover:text-brand shadow-sm transition-all flex justify-between items-center group" onclick="UI.customAlert('Pemberitahuan', 'Fitur Unduh Surat Keterangan Digital (PDF) akan diaktifkan sepenuhnya saat sistem dalam mode produksi akhir.')"><span>Surat Keterangan</span> <i class="fas fa-download text-slate-300 group-hover:text-brand text-xl"></i></button>
+                    <button type="button" class="bg-white/80 border-2 border-white font-black text-slate-700 py-5 px-6 rounded-2xl hover:border-brand hover:text-brand shadow-sm transition-all flex justify-between items-center group" onclick="UI.toast('Fitur Unduh Lab diaktifkan saat produksi')"><span>Hasil Laboratorium</span> <i class="fas fa-download text-slate-300 group-hover:text-brand text-xl"></i></button>
+                    <button type="button" class="bg-white/80 border-2 border-white font-black text-slate-700 py-5 px-6 rounded-2xl hover:border-brand hover:text-brand shadow-sm transition-all flex justify-between items-center group" onclick="UI.toast('Fitur Unduh Surat diaktifkan saat produksi')"><span>Surat Keterangan</span> <i class="fas fa-download text-slate-300 group-hover:text-brand text-xl"></i></button>
                 </div>
             </div>
         </div>
@@ -335,16 +335,21 @@
         // INIT: Check Fullscreen Display Mode OR Auto Login
         window.onload = () => {
             const urlParams = new URLSearchParams(window.location.search);
-            if(urlParams.get('view') === 'display') {
+            const pathname = window.location.pathname;
+            
+            // Fix Vercel Rewrite Detection
+            if(urlParams.get('view') === 'display' || pathname.includes('/displayantrian')) {
                 AppState.isDisplayMode = true;
                 document.getElementById('viewLogin').classList.add('hidden');
                 document.getElementById('mainApp').classList.remove('hidden');
                 document.getElementById('sidebar').classList.add('hidden');
                 document.querySelector('header').classList.add('hidden'); 
-                document.getElementById('workArea').classList.replace('p-4', 'p-0');
-                document.getElementById('workArea').classList.replace('md:p-6', 'p-0');
-                document.getElementById('workArea').classList.replace('lg:p-8', 'p-0');
-                document.getElementById('workArea').classList.replace('xl:p-10', 'p-0');
+                
+                // Adjust layout for full screen
+                const wa = document.getElementById('workArea');
+                wa.classList.remove('p-4', 'md:p-6', 'lg:p-8', 'xl:p-10');
+                wa.classList.add('p-0', 'm-0', 'h-full');
+                
                 loadView('antrian');
             } else {
                 // Auto Login check
@@ -478,11 +483,7 @@
             const isLama = document.querySelector('input[name="o_status"]:checked').value === 'Lama';
             const rmVal = isLama ? document.getElementById('o_rm').value : 'NEW';
             
-            // Generate dropdown dokter berdasarkan staffList jika memungkinkan, 
-            // disini kita asumsikan ID o_dokter sudah terisi manual dari DOM atau bisa di-fetch
-            const dokterName = document.getElementById('o_dokter') ? document.getElementById('o_dokter').value : "Dokter Klinik";
-
-            const p = { nama: document.getElementById('o_nama').value, tglLahir: document.getElementById('o_dob').value, jk: document.getElementById('o_jk').value, nik: document.getElementById('o_nik').value, bpjs: document.getElementById('o_bpjs').value, hp: document.getElementById('o_hp').value, alamat: "Daftar Online", poli: document.getElementById('o_poli').value, dokter: dokterName, pembiayaan: document.getElementById('o_jaminan').value, keluhan: document.getElementById('o_keluhan').value, noRM: rmVal, tipeDaftar: "Online" };
+            const p = { nama: document.getElementById('o_nama').value, tglLahir: document.getElementById('o_dob').value, jk: document.getElementById('o_jk').value, nik: document.getElementById('o_nik').value, bpjs: document.getElementById('o_bpjs').value, hp: document.getElementById('o_hp').value, alamat: "Daftar Online", poli: document.getElementById('o_poli').value, dokter: document.getElementById('o_dokter').value, pembiayaan: document.getElementById('o_jaminan').value, keluhan: document.getElementById('o_keluhan').value, noRM: rmVal, tipeDaftar: "Online" };
             try {
                 const res = await ZettBackend.call('savePendaftaran', p); UI.loader(false); 
                 if(res && res.status==='success') { 
@@ -698,7 +699,7 @@
 
         function buildAntrian(container) {
             container.innerHTML = `
-                <div class="h-full flex flex-col glass-card rounded-[2rem] overflow-y-auto custom-scrollbar">
+                <div class="h-full flex flex-col glass-card rounded-[2rem] overflow-y-auto custom-scrollbar relative">
                     <div class="bg-gradient-to-r from-brand to-branddark p-6 md:p-8 text-white flex flex-col md:flex-row items-center gap-6 shadow-md z-10 relative border-b-4 border-blue-400 shrink-0">
                         <div class="w-16 h-16 md:w-20 md:h-20 bg-white/20 backdrop-blur-md rounded-[1.25rem] flex items-center justify-center shadow-inner border border-white/30 overflow-hidden shrink-0">
                             <img src="axalogo.png" alt="Logo" class="w-full h-full object-contain p-2" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
@@ -714,15 +715,15 @@
                         </div>
                     </div>
                     
-                    <div class="flex-1 p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 bg-slate-50/50">
+                    <div class="flex-1 p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 bg-slate-50/50 min-h-0 relative">
                         <!-- LOKET -->
-                        <div class="glass-card rounded-[2rem] border-t-[12px] border-medblue-500 shadow-xl flex flex-col relative">
+                        <div class="glass-card rounded-[2rem] border-t-[12px] border-medblue-500 shadow-xl flex flex-col relative h-full">
                             <h2 class="text-xl md:text-2xl font-black text-medblue-900 py-4 border-b border-medblue-100 bg-white/60 backdrop-blur-md text-center shrink-0">ANTRIAN LOKET</h2>
-                            <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 relative min-h-[200px]">
+                            <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 relative">
                                 <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-4">
                                     <button type="button" onclick="changeAntrian('loket', -1)" class="admin-control w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-medblue-700 rounded-full text-xl md:text-2xl font-black hover:bg-medblue-50 transition-colors shadow-md border border-slate-100">-</button>
                                     <div class="bg-white/80 backdrop-blur px-4 py-3 md:px-6 md:py-4 rounded-[1.5rem] shadow-inner border border-white flex-1 max-w-[200px] md:max-w-[250px] text-center flex flex-col items-center justify-center">
-                                        <h1 class="text-5xl md:text-7xl xl:text-[90px] font-black text-slate-800 leading-none tracking-tighter" id="dispLoket">A-001</h1>
+                                        <h1 class="text-5xl sm:text-6xl md:text-7xl xl:text-[90px] font-black text-slate-800 leading-none tracking-tighter" id="dispLoket">A-001</h1>
                                     </div>
                                     <button type="button" onclick="changeAntrian('loket', 1)" class="admin-control w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-medblue-700 rounded-full text-xl md:text-2xl font-black hover:bg-medblue-50 transition-colors shadow-md border border-slate-100">+</button>
                                 </div>
@@ -732,14 +733,14 @@
                         </div>
 
                         <!-- POLI UMUM -->
-                        <div class="glass-card rounded-[2rem] border-t-[12px] border-green-500 shadow-xl flex flex-col relative overflow-hidden group">
+                        <div class="glass-card rounded-[2rem] border-t-[12px] border-green-500 shadow-xl flex flex-col relative group h-full">
                             <div class="absolute inset-0 bg-green-50/40 opacity-50 z-0 pointer-events-none"></div>
                             <h2 class="text-xl md:text-2xl font-black text-green-800 py-4 border-b border-green-100 bg-white/60 backdrop-blur-md z-10 text-center shrink-0">POLI UMUM</h2>
-                            <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 z-10 min-h-[200px]">
+                            <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 z-10">
                                 <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-4">
                                     <button type="button" onclick="changeAntrian('poliUmum', -1)" class="admin-control w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-green-700 rounded-full text-xl md:text-2xl font-black hover:bg-green-50 transition-colors shadow-md border border-slate-100">-</button>
                                     <div class="bg-white/80 backdrop-blur px-4 py-3 md:px-6 md:py-4 rounded-[1.5rem] shadow-inner border border-white flex-1 max-w-[200px] md:max-w-[250px] text-center flex flex-col items-center justify-center">
-                                        <h1 class="text-5xl md:text-7xl xl:text-[90px] font-black text-brand leading-none drop-shadow-sm tracking-tighter" id="dispPoliUmum">B-001</h1>
+                                        <h1 class="text-5xl sm:text-6xl md:text-7xl xl:text-[90px] font-black text-brand leading-none drop-shadow-sm tracking-tighter" id="dispPoliUmum">B-001</h1>
                                     </div>
                                     <button type="button" onclick="changeAntrian('poliUmum', 1)" class="admin-control w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-green-700 rounded-full text-xl md:text-2xl font-black hover:bg-green-50 transition-colors shadow-md border border-slate-100">+</button>
                                 </div>
@@ -750,14 +751,14 @@
                         </div>
 
                         <!-- POLI GIGI -->
-                        <div class="glass-card rounded-[2rem] border-t-[12px] border-yellow-500 shadow-xl flex flex-col relative overflow-hidden group">
+                        <div class="glass-card rounded-[2rem] border-t-[12px] border-yellow-500 shadow-xl flex flex-col relative group h-full">
                             <div class="absolute inset-0 bg-yellow-50/40 opacity-50 z-0 pointer-events-none"></div>
                             <h2 class="text-xl md:text-2xl font-black text-yellow-800 py-4 border-b border-yellow-100 bg-white/60 backdrop-blur-md z-10 text-center shrink-0">POLI GIGI</h2>
-                            <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 z-10 min-h-[200px]">
+                            <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 z-10">
                                 <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-4">
                                     <button type="button" onclick="changeAntrian('poliGigi', -1)" class="admin-control w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-yellow-700 rounded-full text-xl md:text-2xl font-black hover:bg-yellow-50 transition-colors shadow-md border border-slate-100">-</button>
                                     <div class="bg-white/80 backdrop-blur px-4 py-3 md:px-6 md:py-4 rounded-[1.5rem] shadow-inner border border-white flex-1 max-w-[200px] md:max-w-[250px] text-center flex flex-col items-center justify-center">
-                                        <h1 class="text-5xl md:text-7xl xl:text-[90px] font-black text-yellow-600 leading-none drop-shadow-sm tracking-tighter" id="dispPoliGigi">C-001</h1>
+                                        <h1 class="text-5xl sm:text-6xl md:text-7xl xl:text-[90px] font-black text-yellow-600 leading-none drop-shadow-sm tracking-tighter" id="dispPoliGigi">C-001</h1>
                                     </div>
                                     <button type="button" onclick="changeAntrian('poliGigi', 1)" class="admin-control w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-yellow-700 rounded-full text-xl md:text-2xl font-black hover:bg-yellow-50 transition-colors shadow-md border border-slate-100">+</button>
                                 </div>
@@ -838,7 +839,6 @@
         };
 
         window.panggilAudio = (nomor, poli, nama = "Hamba Allah") => { 
-            // SFX Ding Dong Khusus RS (Free API / Web Audio)
             const sfx = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
             sfx.volume = 1.0;
             
@@ -884,6 +884,7 @@
             container.innerHTML = `
                 <div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">RME & Odontogram</h2></div>
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    <!-- Left: API Queue -->
                     <div class="lg:col-span-4 space-y-6">
                         <div class="glass-card p-6 rounded-[2rem] border-t-8 border-brand">
                             <h3 class="font-black text-slate-800 text-sm uppercase mb-4 border-b border-slate-200/50 pb-3 tracking-widest flex items-center"><i class="fas fa-list-ol text-brand mr-3 text-lg"></i> Daftar Antrian</h3>
@@ -891,6 +892,7 @@
                         </div>
                     </div>
                     
+                    <!-- Right: Big Form -->
                     <div class="lg:col-span-8 glass-card p-6 md:p-8 relative h-fit max-h-[85vh] overflow-y-auto custom-scrollbar border-t-8 border-yellow-500 rounded-[2rem]">
                         <div id="rmeOverlay" class="absolute inset-0 bg-white/95 backdrop-blur-xl z-10 flex flex-col justify-center items-center rounded-[2rem]">
                             <div class="w-24 h-24 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-300 text-5xl mb-6 shadow-sm"><i class="fas fa-user-md"></i></div>
@@ -903,6 +905,7 @@
                                 <div class="text-right mt-3 md:mt-0"><span class="bg-white border border-slate-200 font-mono text-sm px-4 py-2 rounded-xl font-black text-brand shadow-sm" id="rmeRm">RM-XXXX</span><input type="hidden" id="rmeIdDaftar"></div>
                             </div>
 
+                            <!-- CPPT History Table -->
                             <div class="mb-8">
                                 <h4 class="font-black text-xs text-white bg-slate-800 p-4 px-6 rounded-t-2xl uppercase tracking-widest">RIWAYAT CPPT SEBELUMNYA</h4>
                                 <div class="border border-slate-200 rounded-b-2xl overflow-x-auto bg-white/80 backdrop-blur-sm">
@@ -913,6 +916,7 @@
                                 </div>
                             </div>
 
+                            <!-- Vitals -->
                             <h4 class="font-black text-xs text-white bg-brand p-4 px-6 rounded-t-2xl uppercase tracking-widest">TANDA-TANDA VITAL (O)</h4>
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-5 p-6 border border-t-0 border-slate-200 rounded-b-2xl bg-white/80 backdrop-blur-sm mb-8">
                                 <div><label>Suhu Tubuh (°C)</label><input type="number" step="0.1" id="v_suhu" class="input-med bg-white"></div>
@@ -925,11 +929,14 @@
                                 <div><label>Berat Badan (kg)</label><input type="number" id="v_bb" class="input-med bg-white"></div>
                             </div>
 
+                            <!-- Screening -->
                             <h4 class="font-black text-xs text-white bg-orange-500 p-4 px-6 rounded-t-2xl uppercase tracking-widest">SCREENING KHUSUS</h4>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 border border-t-0 border-slate-200 rounded-b-2xl bg-white/80 backdrop-blur-sm mb-8">
                                 <div class="border border-orange-100 p-6 rounded-2xl bg-white shadow-sm">
                                     <label class="mb-5 text-orange-900 text-xs font-black">Skala Nyeri (0-10): <span id="painVal" class="text-red-600 text-2xl font-black ml-2">0</span></label>
-                                    <div class="flex justify-between items-center px-4 mb-6 text-4xl text-slate-200"><i class="far fa-smile text-green-500"></i><i class="far fa-meh text-yellow-500"></i><i class="far fa-frown text-orange-500"></i><i class="far fa-sad-tear text-red-600 drop-shadow-md"></i></div>
+                                    <div class="flex justify-between items-center px-4 mb-6 text-4xl text-slate-200">
+                                        <i class="far fa-smile text-green-500"></i><i class="far fa-meh text-yellow-500"></i><i class="far fa-frown text-orange-500"></i><i class="far fa-sad-tear text-red-600 drop-shadow-md"></i>
+                                    </div>
                                     <input type="range" id="skalaNyeri" min="0" max="10" step="2" value="0" oninput="document.getElementById('painVal').innerText=this.value">
                                 </div>
                                 <div class="border border-orange-100 p-6 rounded-2xl bg-white shadow-sm">
@@ -941,12 +948,14 @@
                                 </div>
                             </div>
 
+                            <!-- Odontogram -->
                             <h4 class="font-black text-xs text-white bg-blue-500 p-4 px-6 rounded-t-2xl uppercase tracking-widest flex justify-between items-center"><span>ODONTOGRAM GIGI (KLINIS)</span><button type="button" onclick="document.getElementById('odontoCanvas').getContext('2d').clearRect(0,0,600,150)" class="text-[10px] bg-white text-blue-600 px-4 py-2 rounded-lg shadow-sm hover:bg-blue-50 transition-colors">CLEAR CANVAS</button></h4>
                             <div class="mb-8 border border-t-0 border-slate-200 rounded-b-2xl p-8 bg-white/80 backdrop-blur-sm flex flex-col items-center">
                                 <canvas id="odontoCanvas" width="600" height="150" class="bg-white rounded-2xl border-2 border-dashed border-blue-200 cursor-crosshair shadow-sm mb-4"></canvas>
                                 <p class="text-[10px] font-black tracking-widest uppercase text-slate-400">Gunakan mouse/jari untuk menandai area karies/bolong</p>
                             </div>
 
+                            <!-- SOAP -->
                             <h4 class="font-black text-xs text-white bg-green-600 p-4 px-6 rounded-t-2xl uppercase tracking-widest">SOAP & TINDAKAN UTAMA</h4>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 border border-t-0 border-slate-200 rounded-b-2xl bg-white/80 backdrop-blur-sm mb-8">
                                 <div><label>Subjective (S)</label><textarea id="rmeSub" class="input-med h-32 resize-none bg-white" required placeholder="Keluhan utama pasien..."></textarea></div>
@@ -969,11 +978,16 @@
                 }
             } catch (err) { UI.loader(false); }
 
+            // Draw Odontogram Base
             const cvs = document.getElementById('odontoCanvas'); const ctx = cvs.getContext('2d');
             ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 2;
             for(let i=0; i<16; i++){ 
-                ctx.beginPath(); ctx.arc(35 + (i*35), 45, 14, 0, 2*Math.PI); ctx.stroke(); ctx.beginPath(); ctx.arc(35 + (i*35), 45, 6, 0, 2*Math.PI); ctx.stroke();
-                ctx.beginPath(); ctx.arc(35 + (i*35), 105, 14, 0, 2*Math.PI); ctx.stroke(); ctx.beginPath(); ctx.arc(35 + (i*35), 105, 6, 0, 2*Math.PI); ctx.stroke();
+                // Upper
+                ctx.beginPath(); ctx.arc(35 + (i*35), 45, 14, 0, 2*Math.PI); ctx.stroke();
+                ctx.beginPath(); ctx.arc(35 + (i*35), 45, 6, 0, 2*Math.PI); ctx.stroke();
+                // Lower
+                ctx.beginPath(); ctx.arc(35 + (i*35), 105, 14, 0, 2*Math.PI); ctx.stroke();
+                ctx.beginPath(); ctx.arc(35 + (i*35), 105, 6, 0, 2*Math.PI); ctx.stroke();
             }
             let draw = false; const drawPoint = (e) => { if(!draw) return; e.preventDefault(); const r = cvs.getBoundingClientRect(); const sX = cvs.width / r.width; const sY = cvs.height / r.height; const x = ((e.clientX || (e.touches && e.touches[0].clientX)) - r.left) * sX; const y = ((e.clientY || (e.touches && e.touches[0].clientY)) - r.top) * sY; ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI*2); ctx.fill(); };
             cvs.addEventListener('mousedown', (e)=>{draw=true; drawPoint(e)}); cvs.addEventListener('mousemove', drawPoint); cvs.addEventListener('mouseup', ()=>{draw=false});
@@ -1115,7 +1129,7 @@
         };
 
         function buildConsent(container) {
-            container.innerHTML = `<div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Informed Consent API</h2></div><div class="glass-card p-6 md:p-10 rounded-[2rem] max-w-2xl mx-auto shadow-xl"><div class="bg-blue-50 p-5 rounded-2xl mb-8 border border-blue-100 shadow-inner"><p class="text-sm text-blue-900 text-justify font-bold leading-relaxed">"Saya memahami dan menyetujui dilakukannya tindakan medis sesuai dengan Standar Operasional Prosedur (SOP) klinik, setelah mendapat penjelasan komprehensif mengenai risiko dan manfaat dari dokter penanggung jawab."</p></div><div class="mb-6"><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">No RM Pasien / NIK Wali</label><input type="text" id="ic_rm" placeholder="Contoh: RM-2601-0001" class="w-full p-4 border-2 border-slate-100 bg-slate-50 rounded-2xl uppercase outline-none focus:border-brand font-bold transition-colors"></div><div class="mb-8"><label class="block text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-3">Tanda Tangan Digital (Base64 API)</label><div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm relative group"><canvas id="signatureCanvas" width="500" height="200" class="w-full h-auto bg-slate-50 rounded-xl"></canvas><button type="button" onclick="document.getElementById('signatureCanvas').getContext('2d').clearRect(0,0,500,200)" class="absolute top-5 right-5 bg-white/90 backdrop-blur border border-gray-200 text-slate-500 hover:text-red-500 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-colors"><i class="fas fa-eraser mr-1"></i> Hapus</button></div></div><button onclick="submitConsent()" class="w-full bg-medgreen-600 text-white font-black tracking-widest py-4 rounded-2xl shadow-lg hover:bg-medgreen-700 transition-all transform hover:-translate-y-1 text-lg"><i class="fas fa-cloud-upload-alt mr-2"></i> POST API PERSETUJUAN</button></div>`;
+            container.innerHTML = `<div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Informed Consent API</h2></div><div class="glass-card p-6 md:p-10 rounded-[2rem] max-w-2xl mx-auto shadow-xl"><div class="bg-blue-50 p-5 rounded-2xl mb-8 border border-blue-100 shadow-inner"><p class="text-sm text-blue-900 text-justify font-bold leading-relaxed">"Saya memahami dan menyetujui dilakukannya tindakan medis sesuai dengan Standar Operasional Prosedur (SOP) klinik, setelah mendapat penjelasan komprehensif mengenai risiko dan manfaat dari dokter penanggung jawab."</p></div><div class="mb-6"><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">No RM Pasien / NIK Wali</label><input type="text" id="ic_rm" placeholder="Contoh: RM-2601-0001" class="w-full p-4 border-2 border-slate-100 bg-slate-50 rounded-2xl uppercase outline-none focus:bg-white focus:border-brand font-bold transition-colors"></div><div class="mb-8"><label class="block text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-3">Tanda Tangan Digital (Base64 API)</label><div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm relative group"><canvas id="signatureCanvas" width="500" height="200" class="w-full h-auto bg-slate-50 rounded-xl"></canvas><button type="button" onclick="document.getElementById('signatureCanvas').getContext('2d').clearRect(0,0,500,200)" class="absolute top-5 right-5 bg-white/90 backdrop-blur border border-gray-200 text-slate-500 hover:text-red-500 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-colors"><i class="fas fa-eraser mr-1"></i> Hapus</button></div></div><button onclick="submitConsent()" class="w-full bg-medgreen-600 text-white font-black tracking-widest py-4 rounded-2xl shadow-lg hover:bg-medgreen-700 transition-all transform hover:-translate-y-1 text-lg"><i class="fas fa-cloud-upload-alt mr-2"></i> POST API PERSETUJUAN</button></div>`;
             const cvs = document.getElementById('signatureCanvas'); const ctx = cvs.getContext('2d'); ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.strokeStyle = '#1e3a8a'; let draw = false;
             const pos = (e) => { const r = cvs.getBoundingClientRect(); const sX = cvs.width / r.width; const sY = cvs.height / r.height; const x = e.touches ? e.touches[0].clientX : e.clientX; const y = e.touches ? e.touches[0].clientY : e.clientY; return { x: (x - r.left) * sX, y: (y - r.top) * sY }; };
             const start = (e) => { e.preventDefault(); draw = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }; const move = (e) => { e.preventDefault(); if(!draw) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
@@ -1160,7 +1174,7 @@
             `;
             cariObat(); 
         }
-        window.cariObat = async () => { const kw = document.getElementById('searchObatInput').value; const c = document.getElementById('hasilCariObat'); c.innerHTML = '<div class="text-center p-8"><i class="fas fa-circle-notch fa-spin text-medblue-400 text-3xl"></i></div>'; try { const res = await ZettBackend.call('searchObatBackend', kw); if(res && res.status === 'success') { if(!res.data || res.data.length === 0) c.innerHTML = '<div class="bg-red-50 text-red-600 p-4 rounded-xl text-center font-black border border-red-100">Obat tidak ditemukan di API.</div>'; else c.innerHTML = res.data.map(o => `<div class="p-4 border-2 rounded-2xl flex justify-between items-center transition-all hover:shadow-md ${o.stok <= o.min ? 'bg-red-50/80 border-red-200' : 'bg-white/80 backdrop-blur-sm border-slate-100 hover:border-brand'}"><div><p class="font-black text-slate-800 text-lg">${o.nama}</p><p class="text-[10px] text-slate-400 mt-1 font-mono">${o.id} | <span class="bg-slate-100 px-2 py-1 rounded font-bold">${o.kategori}</span></p><p class="text-sm mt-2 font-black">Stok: <span class="${o.stok <= o.min ? 'text-red-600 bg-red-100 px-2 py-0.5 rounded-lg':'text-medgreen-600'}">${o.stok}</span></p></div><button type="button" onclick="document.getElementById('f_id').value='${o.id}'" class="bg-blue-50 text-brand hover:bg-brand hover:text-white px-5 py-3 rounded-xl text-sm font-black transition-colors shadow-sm">Pilih</button></div>`).join(''); } } catch(err) { c.innerHTML='<div class="text-center p-4 font-bold text-red-500">API Server Error</div>'; } };
+        window.cariObat = async () => { const kw = document.getElementById('searchObatInput').value; const c = document.getElementById('hasilCariObat'); c.innerHTML = '<div class="text-center p-8"><i class="fas fa-circle-notch fa-spin text-medblue-400 text-3xl"></i></div>'; try { const res = await ZettBackend.call('searchObatBackend', kw); if(res && res.status === 'success') { if(!res.data || res.data.length === 0) c.innerHTML = '<div class="bg-red-50 text-red-600 p-4 rounded-xl text-center font-black border border-red-100">Obat tidak ditemukan di API.</div>'; else c.innerHTML = res.data.map(o => `<div class="p-4 border-2 rounded-2xl flex justify-between items-center transition-all hover:shadow-md ${o.stok <= o.min ? 'bg-red-50/80 border-red-200' : 'bg-white border-slate-100 hover:border-brand'}"><div><p class="font-black text-slate-800 text-lg">${o.nama}</p><p class="text-[10px] text-slate-400 mt-1 font-mono">${o.id} | <span class="bg-slate-100 px-2 py-1 rounded font-bold">${o.kategori}</span></p><p class="text-sm mt-2 font-black">Stok: <span class="${o.stok <= o.min ? 'text-red-600 bg-red-100 px-2 py-0.5 rounded-lg':'text-medgreen-600'}">${o.stok}</span></p></div><button type="button" onclick="document.getElementById('f_id').value='${o.id}'" class="bg-blue-50 text-brand hover:bg-brand hover:text-white px-5 py-3 rounded-xl text-sm font-black transition-colors shadow-sm">Pilih</button></div>`).join(''); } } catch(err) { c.innerHTML='<div class="text-center p-4 font-bold text-red-500">API Server Error</div>'; } };
         window.submitDispense = async (e) => { e.preventDefault(); const idObat = document.getElementById('f_id').value; if(!idObat) return UI.toast('Pilih obat dari tabel kiri!', true); let dArr = []; if(document.getElementById('d_pagi').checked) dArr.push('Pagi'); if(document.getElementById('d_siang').checked) dArr.push('Siang'); if(document.getElementById('d_sore').checked) dArr.push('Malam'); const p = { idObat: idObat, qty: document.getElementById('f_qty').value, dosis: dArr.length ? dArr.join(', ') : 'Sesuai Anjuran', apoteker: AppState.user?.name || 'Apoteker' }; UI.loader(true, 'POST API Dispense...'); try { const res = await ZettBackend.call('dispenseObat', p); UI.loader(false); if(res && res.status==='success') { UI.customAlert('DISPENSE BERHASIL', 'Stok obat berhasil dikurangi dan dicatat dalam log Farmasi.'); cariObat(); document.getElementById('f_qty').value=''; document.getElementById('f_id').value=''; } else UI.toast(res?.message || 'Error', true); } catch(err) { UI.loader(false); UI.toast('API Fetch Error', true); } };
 
         // G. STAFF MANAGEMENT (NEW)
