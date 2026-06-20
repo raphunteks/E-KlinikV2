@@ -138,15 +138,15 @@
         </div>
     </div>
 
-    <!-- TICKET MODAL FOR PRINTING QUEUE -->
+    <!-- TICKET MODAL FOR PRINTING QUEUE (UPGRADE GBR 1 & 2) -->
     <div id="ticketModalOverlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[999999] hidden flex items-center justify-center p-4 transition-opacity duration-300 opacity-0">
         <div class="bg-white/95 backdrop-blur-xl border border-white p-6 rounded-[2rem] shadow-2xl max-w-sm w-full text-center transform scale-95 transition-transform duration-300" id="ticketModalCard">
             <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-md border border-slate-100 overflow-hidden">
                 <img src="axalogo.png" alt="Axa Logo" class="w-full h-full object-contain p-1" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                 <i class="fas fa-clinic-medical text-brand text-xl hidden"></i>
             </div>
-            <h2 class="font-black text-xl text-slate-800 tracking-tight">AXA E-KLINIK</h2>
-            <p class="text-xs text-slate-500 font-bold border-b border-slate-200 pb-4 mb-4 uppercase tracking-widest">Klinik Utama</p>
+            <h2 class="font-black text-2xl text-green-600 tracking-tight mb-1"><i class="fas fa-check-circle mr-1"></i> BERHASIL!</h2>
+            <p class="text-xs text-slate-500 font-bold border-b border-slate-200 pb-4 mb-4 uppercase tracking-widest">Silakan Cetak Antrian Anda</p>
             
             <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 inline-block px-3 py-1 rounded-full mb-2">NOMOR ANTRIAN</p>
             <h1 class="text-6xl font-black text-brand mb-2 tracking-tighter drop-shadow-sm" id="ticketQueueNo">A-001</h1>
@@ -158,7 +158,7 @@
             </div>
             
             <div class="bg-slate-50 p-4 rounded-xl mt-6 border border-slate-100 shadow-inner">
-                <p class="text-[10px] text-slate-500 font-bold leading-relaxed mb-3">Silakan tunggu panggilan di ruang tunggu. Pindai QR Code untuk Live Tracking.</p>
+                <p class="text-[10px] text-slate-500 font-bold leading-relaxed mb-3">Tunggu panggilan di ruang tunggu. Pindai QR Code untuk Live Tracking Portal.</p>
                 <div id="ticketQrCode" class="flex justify-center bg-white p-2 rounded-lg inline-block shadow-sm"></div>
             </div>
             
@@ -214,6 +214,7 @@
             <form id="formOnline" onsubmit="handleDaftarOnline(event)" class="space-y-5 hidden relative z-20 h-[450px] overflow-y-auto custom-scrollbar pr-2 pb-6">
                 <div class="bg-white/95 p-6 rounded-3xl shadow-xl border border-white backdrop-blur-md">
                     <h4 class="font-black text-brand text-sm border-b border-slate-200 pb-3 mb-4 uppercase tracking-widest"><i class="fas fa-hospital-user mr-2"></i> Pendaftaran Online</h4>
+                    
                     <div class="space-y-4">
                         <div><label class="text-slate-500">Jenis Kunjungan</label><div class="flex gap-4"><label class="flex items-center justify-center gap-2 normal-case font-bold text-slate-700 bg-slate-50 px-4 py-3 border rounded-xl cursor-pointer w-full"><input type="radio" name="o_jenis" value="Sakit" checked class="w-4 h-4 accent-brand"> Sakit</label><label class="flex items-center justify-center gap-2 normal-case font-bold text-slate-700 bg-slate-50 px-4 py-3 border rounded-xl cursor-pointer w-full"><input type="radio" name="o_jenis" value="Sehat" class="w-4 h-4 accent-brand"> Sehat</label></div></div>
                         <div><label class="text-slate-500">Jaminan</label><select id="o_jaminan" class="input-med !bg-slate-50 border-slate-200 !text-slate-700"><option>PRIBADI</option><option>BPJS KESEHATAN</option><option>ASURANSI LAIN</option></select></div>
@@ -568,32 +569,45 @@
         window.printTicket = () => {
             const data = window.printTicketData;
             if(!data) return;
-            let letter = 'A';
-            if(data.poli === 'Poli Umum') letter = 'B';
-            else if(data.poli === 'Poli Gigi') letter = 'C';
-            
-            const numParts = data.id.split('-');
-            const queueNo = `${letter}-${numParts[numParts.length-1]}`;
+            window.reprintTicket(data.id, data.rm, data.nama, data.poli, data.token);
+            UI.closeTicketModal();
+        };
 
+        window.reprintTicket = (id, rm, nama, poli, token = null) => {
+            let letter = 'A';
+            if(poli === 'Poli Umum') letter = 'B';
+            else if(poli === 'Poli Gigi') letter = 'C';
+            
+            const numParts = id.split('-');
+            const queueNo = `${letter}-${numParts[numParts.length-1]}`;
+            
             const pa = document.getElementById('printArea');
-            pa.innerHTML = `
-            <div style="width: 80mm; padding: 5mm; font-family: monospace; text-align: center; margin:0 auto;">
-                <h2 style="margin:0; font-size: 20px; font-weight:bold;">AXA E-KLINIK</h2>
-                <p style="margin:0; font-size:10px;">Klinik Utama</p>
-                <hr style="margin: 10px 0; border-top: 1px dashed black;">
-                <p style="font-size:12px; margin:0;">NOMOR ANTRIAN</p>
-                <h1 style="font-size:45px; margin:5px 0;">${queueNo}</h1>
-                <p style="font-weight:bold; font-size:16px; margin:0;">${data.poli}</p>
-                <p style="font-size:12px; margin:5px 0;">${data.nama}</p>
-                <p style="font-size:10px; margin:0;">RM: ${data.rm}</p>
-                <hr style="margin: 10px 0; border-top: 1px dashed black;">
-                <p style="font-size:10px; margin-bottom:5px;">Scan QR untuk Live Tracking:</p>
-                <div id="qrcodePrint" style="display:flex; justify-content:center;"></div>
-                <p style="font-size:10px; margin-top:15px;">Terima Kasih Atas Kunjungan Anda</p>
+            let html = `
+            <div style="width: 80mm; padding: 5mm; font-family: sans-serif; text-align: center; margin:0 auto; color: black;">
+                <h2 style="margin:0; font-size: 22px; font-weight:900;">AXA E-KLINIK</h2>
+                <p style="margin:0; font-size:12px; font-weight:bold;">Klinik Utama</p>
+                <hr style="margin: 15px 0; border-top: 2px dashed black;">
+                <p style="font-size:14px; margin:0; font-weight:bold;">NOMOR ANTRIAN</p>
+                <h1 style="font-size:50px; margin:10px 0; font-weight:900;">${queueNo}</h1>
+                <p style="font-weight:900; font-size:18px; margin:0;">${poli}</p>
+                <hr style="margin: 15px 0; border-top: 2px dashed black;">
+                <p style="font-size:14px; margin:5px 0; font-weight:bold;">${nama}</p>
+                <p style="font-size:12px; margin:0;">RM: ${rm}</p>
+                <p style="font-size:12px; margin:15px 0 0 0;">ID: ${id}</p>`;
+                
+            if(token) {
+                html += `
+                <p style="font-size:10px; margin-top:10px; margin-bottom:5px;">Scan QR untuk Live Tracking:</p>
+                <div id="qrcodePrint" style="display:flex; justify-content:center;"></div>`;
+            }
+            
+            html += `<p style="font-size:10px; margin-top:15px;">Terima Kasih Atas Kunjungan Anda</p>
             </div>`;
             
-            if(typeof QRCode !== 'undefined') { 
-                new QRCode(document.getElementById("qrcodePrint"), { text: `https://axaklinik.com/?track=${data.token}`, width: 100, height: 100 }); 
+            pa.innerHTML = html;
+            
+            if(token && typeof QRCode !== 'undefined') { 
+                new QRCode(document.getElementById("qrcodePrint"), { text: `https://axaklinik.com/?track=${token}`, width: 100, height: 100 }); 
             } 
             setTimeout(() => window.print(), 500);
         };
@@ -633,7 +647,7 @@
             const nav = document.getElementById('navMenu'); nav.innerHTML = '';
             Menus.forEach(m => {
                 if(AppState.user?.role && m.roles.includes(AppState.user.role)) {
-                    nav.innerHTML += `<button type="button" onclick="loadView('${m.id}')" data-target="${m.id}" class="flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 font-bold text-sm text-slate-500 hover:bg-white/60 hover:text-brand w-full text-left outline-none mb-1.5"><i class="fas ${m.icon} w-6 text-center text-lg opacity-70"></i> <span>${m.label}</span></button>`;
+                    nav.innerHTML += `<button type="button" onclick="loadView('${m.id}')" data-target="${m.id}" class="flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 font-bold text-sm text-slate-500 hover:bg-slate-100 hover:text-brand w-full text-left outline-none mb-1.5"><i class="fas ${m.icon} w-6 text-center text-lg opacity-70"></i> <span>${m.label}</span></button>`;
                 }
             });
         }
@@ -644,7 +658,7 @@
             document.querySelectorAll('#navMenu button').forEach(a => {
                 if(a.dataset.target === vid) { 
                     a.classList.add('bg-brand','text-white','shadow-lg','shadow-brand/30'); 
-                    a.classList.remove('text-slate-500','hover:bg-white/60','hover:text-brand'); 
+                    a.classList.remove('text-slate-500','hover:bg-slate-100','hover:text-brand'); 
                     a.querySelector('i').classList.remove('opacity-70'); 
                 } else { 
                     a.classList.remove('bg-brand','text-white','shadow-lg','shadow-brand/30'); 
@@ -787,7 +801,25 @@
                 if(res && res.status==='success' && Array.isArray(res.data)) {
                     if(res.data.length === 0) list.innerHTML = '<div class="text-center p-6 border-2 border-dashed border-slate-200 rounded-2xl font-bold text-slate-400">Antrian kosong</div>';
                     else {
-                        list.innerHTML = res.data.map(d => `<div class="p-4 border border-white bg-white/50 backdrop-blur rounded-2xl shadow-sm"><div class="flex justify-between items-center mb-2"><span class="font-black text-slate-800 text-base">${d.nama}</span><span class="text-[10px] font-black text-white bg-slate-800 px-2 py-1 rounded tracking-widest">${d.tipe}</span></div><p class="text-[11px] font-mono font-bold text-brand bg-blue-50/50 inline-block px-2 py-1 rounded">${d.idDaftar} | ${d.noRM}</p><div class="flex justify-between items-center mt-3 pt-3 border-t border-slate-200/50"><span class="text-xs font-black text-slate-500 uppercase tracking-widest">${d.status}</span> <select onchange="ubahStatusAntrian('${d.idDaftar}', this.value)" class="text-[11px] p-2 rounded-lg border border-slate-200 font-bold outline-none cursor-pointer bg-white"><option value="">Ubah Status</option><option value="Selesai RME">Selesai</option><option value="Batal">Batal</option></select></div></div>`).join('');
+                        list.innerHTML = res.data.map(d => `
+                        <div class="p-4 border border-white bg-white/50 backdrop-blur rounded-2xl shadow-sm">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-black text-slate-800 text-base truncate pr-2">${d.nama}</span>
+                                <span class="text-[10px] font-black text-white bg-slate-800 px-2 py-1 rounded tracking-widest shrink-0">${d.tipe}</span>
+                            </div>
+                            <p class="text-[11px] font-mono font-bold text-brand bg-blue-50/50 inline-block px-2 py-1 rounded">${d.idDaftar} | ${d.noRM}</p>
+                            <div class="flex justify-between items-center mt-3 pt-3 border-t border-slate-200/50">
+                                <span class="text-xs font-black text-slate-500 uppercase tracking-widest">${d.status}</span> 
+                                <div class="flex gap-2">
+                                    <button onclick="reprintTicket('${d.idDaftar}', '${d.noRM}', '${d.nama}', '${d.poli}')" class="bg-blue-100 text-brand px-2.5 py-1.5 rounded-lg hover:bg-brand hover:text-white transition-colors" title="Cetak Antrian"><i class="fas fa-print"></i></button>
+                                    <select onchange="ubahStatusAntrian('${d.idDaftar}', this.value)" class="text-[11px] p-2 rounded-lg border border-slate-200 font-bold outline-none cursor-pointer bg-white">
+                                        <option value="">Ubah Status</option>
+                                        <option value="Selesai RME">Selesai</option>
+                                        <option value="Batal">Batal</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>`).join('');
                         window.antrianList = res.data.reverse(); 
                         updateDisplayAntrian(); 
                     }
@@ -960,6 +992,7 @@
             sfx.play().then(() => {
                 sfx.onended = speakText;
             }).catch(e => {
+                console.log("SFX Blocked or Error. Fallback to TTS only.");
                 speakText();
             });
             
@@ -1064,11 +1097,16 @@
                 }
             } catch (err) { UI.loader(false); }
 
+            // Draw Odontogram Base
             const cvs = document.getElementById('odontoCanvas'); const ctx = cvs.getContext('2d');
             ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 2;
             for(let i=0; i<16; i++){ 
-                ctx.beginPath(); ctx.arc(35 + (i*35), 45, 14, 0, 2*Math.PI); ctx.stroke(); ctx.beginPath(); ctx.arc(35 + (i*35), 45, 6, 0, 2*Math.PI); ctx.stroke();
-                ctx.beginPath(); ctx.arc(35 + (i*35), 105, 14, 0, 2*Math.PI); ctx.stroke(); ctx.beginPath(); ctx.arc(35 + (i*35), 105, 6, 0, 2*Math.PI); ctx.stroke();
+                // Upper
+                ctx.beginPath(); ctx.arc(35 + (i*35), 45, 14, 0, 2*Math.PI); ctx.stroke();
+                ctx.beginPath(); ctx.arc(35 + (i*35), 45, 6, 0, 2*Math.PI); ctx.stroke();
+                // Lower
+                ctx.beginPath(); ctx.arc(35 + (i*35), 105, 14, 0, 2*Math.PI); ctx.stroke();
+                ctx.beginPath(); ctx.arc(35 + (i*35), 105, 6, 0, 2*Math.PI); ctx.stroke();
             }
             let draw = false; const drawPoint = (e) => { if(!draw) return; e.preventDefault(); const r = cvs.getBoundingClientRect(); const sX = cvs.width / r.width; const sY = cvs.height / r.height; const x = ((e.clientX || (e.touches && e.touches[0].clientX)) - r.left) * sX; const y = ((e.clientY || (e.touches && e.touches[0].clientY)) - r.top) * sY; ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI*2); ctx.fill(); };
             cvs.addEventListener('mousedown', (e)=>{draw=true; drawPoint(e)}); cvs.addEventListener('mousemove', drawPoint); cvs.addEventListener('mouseup', ()=>{draw=false});
@@ -1155,8 +1193,8 @@
         };
         function cetakStrukKasir(p, t) {
             const pa = document.getElementById('printArea');
-            pa.innerHTML = `<div style="width: 80mm; padding: 5mm; font-family: monospace; font-size:12px; margin: 0 auto;"><div style="text-align: center;"><h2 style="margin:0; font-size: 20px;">AXA E KLINIK</h2><p style="margin:5px 0;">NOTA PEMBAYARAN RESMI</p></div><hr style="border-top:1px dashed #000; margin: 10px 0;"><p style="margin:2px 0;">TRX ID : ${p.trxId}</p><p style="margin:2px 0;">WAKTU  : ${new Date().toLocaleString('id-ID')}</p><p style="margin:2px 0;">KASIR  : ${AppState.user?.name || 'Kasir'}</p><hr style="border-top:1px dashed #000; margin: 10px 0;"><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>TOTAL TAGIHAN</span> <span style="font-size:14px; font-weight:bold;">Rp ${t.toLocaleString('id-ID')}</span></div><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>BAYAR (${p.metode})</span> <span>Rp ${p.dibayar.toLocaleString('id-ID')}</span></div><hr style="border-top:1px dashed #000; margin: 10px 0;"><div style="display:flex; justify-content:space-between; font-weight:bold; font-size:14px;"><span>KEMBALIAN</span> <span>Rp ${p.kembalian.toLocaleString('id-ID')}</span></div><div style="text-align: center; margin-top:20px; font-size: 10px;"><p>Terima kasih atas kunjungan Anda.<br>Semoga lekas sembuh.</p></div></div>`;
-            window.print();
+            pa.innerHTML = `<div style="width: 80mm; padding: 5mm; font-family: monospace; font-size:12px; margin: 0 auto; color: black;"><div style="text-align: center;"><h2 style="margin:0; font-size: 20px; font-weight:900;">AXA E-KLINIK</h2><p style="margin:5px 0; font-weight:bold;">NOTA PEMBAYARAN RESMI</p></div><hr style="border-top:2px dashed #000; margin: 10px 0;"><p style="margin:2px 0;">TRX ID : ${p.trxId}</p><p style="margin:2px 0;">WAKTU  : ${new Date().toLocaleString('id-ID')}</p><p style="margin:2px 0;">KASIR  : ${AppState.user?.name || 'Kasir'}</p><hr style="border-top:2px dashed #000; margin: 10px 0;"><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>TOTAL TAGIHAN</span> <span style="font-size:14px; font-weight:bold;">Rp ${t.toLocaleString('id-ID')}</span></div><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>BAYAR (${p.metode})</span> <span>Rp ${p.dibayar.toLocaleString('id-ID')}</span></div><hr style="border-top:2px dashed #000; margin: 10px 0;"><div style="display:flex; justify-content:space-between; font-weight:bold; font-size:14px;"><span>KEMBALIAN</span> <span>Rp ${p.kembalian.toLocaleString('id-ID')}</span></div><div style="text-align: center; margin-top:20px; font-size: 10px;"><p>Terima kasih atas kunjungan Anda.<br>Semoga lekas sembuh.</p></div></div>`;
+            setTimeout(() => window.print(), 500);
         }
 
         function buildLab(c) { 
@@ -1171,55 +1209,8 @@
                 if(res && res.status==='success') { 
                     UI.customAlert('BERHASIL DISIMPAN!', 'Hasil Laboratorium telah tersimpan di Database API. Mohon siapkan mesin printer Anda untuk mencetak PDF.');
                     document.getElementById('fLab').reset(); 
-                    const pa = document.getElementById('printArea'); pa.innerHTML = `
-                        <div style="width:100%; max-width:800px; margin:0 auto; padding:40px; font-family:sans-serif;">
-                            <div style="text-align:center; border-bottom:3px solid #000; padding-bottom:10px; margin-bottom:20px; display:flex; align-items:center;">
-                                <div style="width:80px; height:80px; border:1px solid #000; border-radius:15px; display:flex; align-items:center; justify-content:center; overflow:hidden;">
-                                    <img src="axalogo.png" style="width:100%; height:100%; object-fit:contain;" onerror="this.style.display='none'">
-                                </div>
-                                <div style="flex:1;">
-                                    <h1 style="margin:0; font-size:24px;">Axa E Klinik - Klinik Utama</h1>
-                                    <p style="margin:0; font-size:14px;">Jl. Destinasi Raya A6-7 Semarang</p>
-                                    <p style="margin:0; font-size:12px;">Telp. 081226855647</p>
-                                </div>
-                            </div>
-                            <h3 style="text-align:center; text-decoration:underline; font-size:18px; margin-bottom:20px;">HASIL PEMERIKSAAN LABORATORIUM</h3>
-                            <p style="font-size:12px;"><strong>ID Daftar:</strong> ${p.idDaftar}</p>
-                            <p style="font-size:12px;"><strong>Tanggal:</strong> ${new Date().toLocaleDateString('id-ID')}</p>
-                            <table style="width:100%; border-collapse:collapse; margin-top:15px; font-size:14px;" border="1">
-                                <tr style="background:#f3f4f6;">
-                                    <th style="padding:10px; text-align:left;">Pemeriksaan</th>
-                                    <th style="padding:10px; text-align:center;">Hasil</th>
-                                    <th style="padding:10px; text-align:center;">Nilai Rujukan</th>
-                                </tr>
-                                <tr>
-                                    <td style="padding:10px;">Hemoglobin</td>
-                                    <td style="padding:10px; text-align:center;">${p.hb}</td>
-                                    <td style="padding:10px; text-align:center;">12.0 - 16.0 g/dL</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding:10px;">Leukosit</td>
-                                    <td style="padding:10px; text-align:center;">${p.leuko}</td>
-                                    <td style="padding:10px; text-align:center;">4.0 - 10.0 ribu/uL</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding:10px;">Trombosit</td>
-                                    <td style="padding:10px; text-align:center;">${p.trombo}</td>
-                                    <td style="padding:10px; text-align:center;">150 - 400 ribu/uL</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding:10px;">Gula Darah Sewaktu</td>
-                                    <td style="padding:10px; text-align:center; font-weight:bold;">${p.gula}</td>
-                                    <td style="padding:10px; text-align:center;">< 140 mg/dL</td>
-                                </tr>
-                            </table>
-                            <div style="margin-top:50px; float:right; text-align:center; width:200px;">
-                                <p style="font-size:14px;">Petugas Analis,</p>
-                                <div style="height:60px;"></div>
-                                <p style="font-weight:bold; text-decoration:underline; font-size:14px;">${p.petugas}</p>
-                            </div>
-                        </div>`; 
-                    setTimeout(() => window.print(), 1000); 
+                    const pa = document.getElementById('printArea'); pa.innerHTML = `<div style="width:100%; max-width:800px; margin:0 auto; padding:40px; font-family:sans-serif; color:black;"><div style="text-align:center; border-bottom:4px solid black; padding-bottom:10px; margin-bottom:20px; display:flex; align-items:center;"><div style="width:80px; height:80px; border:1px solid #000; border-radius:15px; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:10px; overflow:hidden;"><img src="axalogo.png" style="width:100%; height:100%; object-fit:contain;" onerror="this.style.display='none'"></div><div style="flex:1;"><h1 style="margin:0; font-size:24px; font-weight:900;">Axa E Klinik - Klinik Utama</h1><p style="margin:0; font-size:14px;">Jl. Destinasi Raya A6-7 Semarang</p><p style="margin:0; font-size:12px;">Telp. 081226855647</p></div></div><h2 style="text-align:center; text-decoration:underline;">HASIL PEMERIKSAAN LAB</h2><p><strong>ID Daftar:</strong> ${p.idDaftar}</p><p><strong>Tanggal:</strong> ${new Date().toLocaleDateString('id-ID')}</p><table style="width:100%; border-collapse:collapse; margin-top:20px;" border="1"> <tr style="background:#f3f4f6;"> <th style="padding:10px; text-align:left;">Pemeriksaan</th> <th style="padding:10px; text-align:center;">Hasil</th> <th style="padding:10px; text-align:center;">Nilai Rujukan</th> </tr> <tr> <td style="padding:10px;">Hemoglobin</td> <td style="padding:10px; text-align:center;">${p.hb}</td> <td style="padding:10px; text-align:center;">12.0 - 16.0 g/dL</td> </tr> <tr> <td style="padding:10px;">Leukosit</td> <td style="padding:10px; text-align:center;">${p.leuko}</td> <td style="padding:10px; text-align:center;">4.0 - 10.0 ribu/uL</td> </tr> <tr> <td style="padding:10px;">Trombosit</td> <td style="padding:10px; text-align:center;">${p.trombo}</td> <td style="padding:10px; text-align:center;">150 - 400 ribu/uL</td> </tr> <tr> <td style="padding:10px;">Gula Darah Sewaktu</td> <td style="padding:10px; text-align:center; font-weight:bold;">${p.gula}</td> <td style="padding:10px; text-align:center;">< 140 mg/dL</td> </tr></table><div style="margin-top:50px; float:right; text-align:center;"><p>Petugas Analis,</p><br><br><br><p style="font-weight:bold; text-decoration:underline;">${p.petugas}</p></div></div>`; 
+                    setTimeout(() => window.print(), 800); 
                 } 
                 else UI.toast(res?.message || 'Error Server API', true);
             } catch(err) { UI.loader(false); UI.toast('API Fetch Error', true); }
@@ -1238,7 +1229,7 @@
                     UI.customAlert('SURAT DITERBITKAN!', `ID Dokumen: <b>${res.printData.id}</b> telah tercatat di server. Printer akan otomatis terbuka.`);
                     document.getElementById('fSurat').reset(); const pa = document.getElementById('printArea'); 
                     
-                    let kontenHTML = `<div style="width:100%; max-width:800px; margin:0 auto; padding:40px; font-family:'Times New Roman', serif; line-height:1.6;"><div style="text-align:center; border-bottom:3px solid #000; padding-bottom:10px; margin-bottom:20px; display:flex; align-items:center;"><div style="width:80px; height:80px; border:1px solid #000; border-radius:15px; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:10px; overflow:hidden;"><img src="axalogo.png" style="width:100%; height:100%; object-fit:contain;" onerror="this.style.display='none'"></div><div style="flex:1;"><h1 style="margin:0; font-size:24px;">Axa E Klinik - Klinik Utama</h1><p style="margin:0; font-size:14px;">Jl. Destinasi Raya A6-7 Semarang</p><p style="margin:0; font-size:12px;">Telp. 081226855647</p></div></div><h3 style="text-align:center; text-decoration:underline; font-size:18px;">*** SURAT ${p.tipe.toUpperCase()} ***</h3><p style="text-align:center; margin-top:-10px; font-size:12px;">Nomor: ${res.printData.id}</p><p style="margin-top:30px;">Yang bertanda tangan dibawah ini menerangkan bahwa:</p><table style="margin-left:40px; margin-bottom:20px;"><tr><td width="120">No Rekam Medis</td><td>: ${p.noRM}</td></tr><tr><td>Pekerjaan</td><td>: Karyawan Swasta</td></tr>`;
+                    let kontenHTML = `<div style="width:100%; max-width:800px; margin:0 auto; padding:40px; font-family:'Times New Roman', serif; line-height:1.6; color:black;"><div style="text-align:center; border-bottom:3px solid #000; padding-bottom:10px; margin-bottom:20px; display:flex; align-items:center;"><div style="width:80px; height:80px; border:1px solid #000; border-radius:15px; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:10px; overflow:hidden;"><img src="axalogo.png" style="width:100%; height:100%; object-fit:contain;" onerror="this.style.display='none'"></div><div style="flex:1;"><h1 style="margin:0; font-size:24px; font-weight:900;">Axa E Klinik - Klinik Utama</h1><p style="margin:0; font-size:14px;">Jl. Destinasi Raya A6-7 Semarang</p><p style="margin:0; font-size:12px;">Telp. 081226855647</p></div></div><h3 style="text-align:center; text-decoration:underline; font-size:18px;">*** SURAT ${p.tipe.toUpperCase()} ***</h3><p style="text-align:center; margin-top:-10px; font-size:12px;">Nomor: ${res.printData.id}</p><p style="margin-top:30px;">Yang bertanda tangan dibawah ini menerangkan bahwa:</p><table style="margin-left:40px; margin-bottom:20px;"><tr><td width="120">No Rekam Medis</td><td>: ${p.noRM}</td></tr><tr><td>Pekerjaan</td><td>: Karyawan Swasta</td></tr>`;
                     
                     if(p.tipe === 'Sehat') {
                         kontenHTML += `<tr><td>TB / BB</td><td>: 160 cm / 60 kg</td></tr><tr><td>Tensi / Suhu</td><td>: 120/80 mmHg / 36.5 C</td></tr></table><p style="text-indent:40px;">Pada pemeriksaan kesehatan yang sudah dilakukan pada hari ini maka dengan ini menyatakan yang bersangkutan dalam kondisi <strong>SEHAT</strong>. Surat Keterangan ini dibuat untuk melengkapi administrasi.</p>`;
@@ -1306,7 +1297,7 @@
         window.cariObat = async () => { const kw = document.getElementById('searchObatInput').value; const c = document.getElementById('hasilCariObat'); c.innerHTML = '<div class="text-center p-8"><i class="fas fa-circle-notch fa-spin text-medblue-400 text-3xl"></i></div>'; try { const res = await ZettBackend.call('searchObatBackend', kw); if(res && res.status === 'success') { if(!res.data || res.data.length === 0) c.innerHTML = '<div class="bg-red-50 text-red-600 p-4 rounded-xl text-center font-black border border-red-100">Obat tidak ditemukan di API.</div>'; else c.innerHTML = res.data.map(o => `<div class="p-4 border-2 rounded-2xl flex justify-between items-center transition-all hover:shadow-md ${o.stok <= o.min ? 'bg-red-50/80 border-red-200' : 'bg-white/80 backdrop-blur-sm border-slate-100 hover:border-brand'}"><div><p class="font-black text-slate-800 text-lg">${o.nama}</p><p class="text-[10px] text-slate-400 mt-1 font-mono">${o.id} | <span class="bg-slate-100 px-2 py-1 rounded font-bold">${o.kategori}</span></p><p class="text-sm mt-2 font-black">Stok: <span class="${o.stok <= o.min ? 'text-red-600 bg-red-100 px-2 py-0.5 rounded-lg':'text-medgreen-600'}">${o.stok}</span></p></div><button type="button" onclick="document.getElementById('f_id').value='${o.id}'" class="bg-blue-50 text-brand hover:bg-brand hover:text-white px-5 py-3 rounded-xl text-sm font-black transition-colors shadow-sm">Pilih</button></div>`).join(''); } } catch(err) { c.innerHTML='<div class="text-center p-4 font-bold text-red-500">API Server Error</div>'; } };
         window.submitDispense = async (e) => { e.preventDefault(); const idObat = document.getElementById('f_id').value; if(!idObat) return UI.toast('Pilih obat dari tabel kiri!', true); let dArr = []; if(document.getElementById('d_pagi').checked) dArr.push('Pagi'); if(document.getElementById('d_siang').checked) dArr.push('Siang'); if(document.getElementById('d_sore').checked) dArr.push('Malam'); const p = { idObat: idObat, qty: document.getElementById('f_qty').value, dosis: dArr.length ? dArr.join(', ') : 'Sesuai Anjuran', apoteker: AppState.user?.name || 'Apoteker' }; UI.loader(true, 'POST API Dispense...'); try { const res = await ZettBackend.call('dispenseObat', p); UI.loader(false); if(res && res.status==='success') { UI.customAlert('DISPENSE BERHASIL', 'Stok obat berhasil dikurangi dan dicatat dalam log Farmasi.'); cariObat(); document.getElementById('f_qty').value=''; document.getElementById('f_id').value=''; } else UI.toast(res?.message || 'Error', true); } catch(err) { UI.loader(false); UI.toast('API Fetch Error', true); } };
 
-        // G. STAFF MANAGEMENT
+        // G. STAFF MANAGEMENT (NEW)
         async function buildStaff(container) {
             container.innerHTML = `
                 <div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Manajemen Staff & Dokter</h2></div>
