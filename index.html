@@ -550,7 +550,7 @@
                 overlay.classList.add('opacity-0'); card.classList.remove('scale-100'); card.classList.add('scale-95'); 
                 setTimeout(() => { 
                     overlay.classList.add('hidden'); 
-                    window.history.replaceState({}, document.title, window.location.pathname); // Bersihkan parameter URL
+                    window.history.replaceState({}, document.title, window.location.pathname); // Bersihkan parameter URL bersih
                 }, 300);
             }
         };
@@ -1054,7 +1054,7 @@
                         </div>
                         ${AppState.isDisplayMode ? '' : `
                         <div class="flex gap-3 admin-control flex-wrap justify-center mt-4 md:mt-0">
-                            <button type="button" onclick="fetchAntrianRealtime()" class="bg-white/20 hover:bg-white/30 text-white font-bold px-4 py-2.5 rounded-xl text-xs tracking-widest transition-colors border border-white/30 shadow-sm"><i class="fas fa-sync-alt mr-2"></i> SYNC</button>
+                            <button type="button" onclick="fetchAntrianRealtime(false, true)" class="bg-white/20 hover:bg-white/30 text-white font-bold px-4 py-2.5 rounded-xl text-xs tracking-widest transition-colors border border-white/30 shadow-sm"><i class="fas fa-sync-alt mr-2"></i> SYNC</button>
                             <a href="/displayantrian" target="_blank" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold px-4 py-2.5 rounded-xl text-xs tracking-widest transition-colors shadow-sm flex items-center"><i class="fas fa-expand mr-2"></i> BUKA LCD</a>
                         </div>
                         `}
@@ -1185,7 +1185,7 @@
             if (document.getElementById('fdDispLoket')) document.getElementById('fdDispLoket').innerText = loketNum;
         };
 
-        window.fetchAntrianRealtime = async (silent = false) => {
+        window.fetchAntrianRealtime = async (silent = false, forceReset = false) => {
             try {
                 if(!silent && !AppState.isDisplayMode) UI.loader(true, 'Sinkronisasi Realtime...');
                 const res = await ZettBackend.call('getAntrianAktif');
@@ -1194,14 +1194,33 @@
                     if(res.masterPoli) {
                         window.masterPoli = res.masterPoli;
                     }
-                    if(res.loket && AppState.isDisplayMode) {
-                        window.antrianCounters['loket'] = parseInt(res.loket);
+                    if(res.loket) {
+                        if(AppState.isDisplayMode || forceReset) {
+                            window.antrianCounters['loket'] = parseInt(res.loket);
+                        }
                     }
                     if(Array.isArray(res.data)) {
                         window.antrianList = res.data.reverse(); 
+                        
+                        // Force Reset Logic for Poli Counters if manual SYNC is clicked
+                        if(forceReset && !AppState.isDisplayMode) {
+                            let polis = window.masterPoli || [];
+                            polis.forEach(pObj => {
+                                const poli = pObj.nama;
+                                const poliAntrian = window.antrianList.filter(a => a.poli === poli);
+                                poliAntrian.sort((a,b) => (a.noAntrian || "").localeCompare(b.noAntrian || ""));
+                                
+                                let activeIndex = poliAntrian.findIndex(a => a.status === 'Menunggu');
+                                if(activeIndex === -1) {
+                                    activeIndex = poliAntrian.length > 0 ? poliAntrian.length - 1 : 0;
+                                }
+                                window.antrianCounters[poli] = activeIndex + 1;
+                            });
+                        }
+                        
                         updateDisplayAntrian();
                     }
-                    if(!silent && !AppState.isDisplayMode) UI.toast('Data Antrian Tersinkronisasi');
+                    if(!silent && !AppState.isDisplayMode) UI.toast('Data Antrian Sinkron (Reset ke Posisi Realtime)');
                 }
             } catch(e) { if(!silent && !AppState.isDisplayMode) UI.loader(false); }
         };
@@ -1590,48 +1609,6 @@
         window.cariObat = async () => { const kw = document.getElementById('searchObatInput').value; const c = document.getElementById('hasilCariObat'); c.innerHTML = '<div class="text-center p-8"><i class="fas fa-circle-notch fa-spin text-medblue-400 text-3xl"></i></div>'; try { const res = await ZettBackend.call('searchObatBackend', kw); if(res && res.status === 'success') { if(!res.data || res.data.length === 0) c.innerHTML = '<div class="bg-red-50 text-red-600 p-4 rounded-xl text-center font-black border border-red-100">Obat tidak ditemukan di API.</div>'; else c.innerHTML = res.data.map(o => `<div class="p-4 border-2 rounded-2xl flex justify-between items-center transition-all hover:shadow-md ${o.stok <= o.min ? 'bg-red-50/80 border-red-200' : 'bg-white/80 backdrop-blur-sm border-slate-100 hover:border-brand'}"><div><p class="font-black text-slate-800 text-lg">${o.nama}</p><p class="text-[10px] text-slate-400 mt-1 font-mono">${o.id} | <span class="bg-slate-100 px-2 py-1 rounded font-bold">${o.kategori}</span></p><p class="text-sm mt-2 font-black">Stok: <span class="${o.stok <= o.min ? 'text-red-600 bg-red-100 px-2 py-0.5 rounded-lg':'text-medgreen-600'}">${o.stok}</span></p></div><button type="button" onclick="document.getElementById('f_id').value='${o.id}'" class="bg-blue-50 text-brand hover:bg-brand hover:text-white px-5 py-3 rounded-xl text-sm font-black transition-colors shadow-sm">Pilih</button></div>`).join(''); } } catch(err) { c.innerHTML='<div class="text-center p-4 font-bold text-red-500">API Server Error</div>'; } };
         window.submitDispense = async (e) => { e.preventDefault(); const idObat = document.getElementById('f_id').value; if(!idObat) return UI.toast('Pilih obat dari tabel kiri!', true); let dArr = []; if(document.getElementById('d_pagi').checked) dArr.push('Pagi'); if(document.getElementById('d_siang').checked) dArr.push('Siang'); if(document.getElementById('d_sore').checked) dArr.push('Malam'); const p = { idObat: idObat, qty: document.getElementById('f_qty').value, dosis: dArr.length ? dArr.join(', ') : 'Sesuai Anjuran', apoteker: AppState.user?.name || 'Apoteker' }; UI.loader(true, 'POST API Dispense...'); try { const res = await ZettBackend.call('dispenseObat', p); UI.loader(false); if(res && res.status==='success') { UI.customAlert('DISPENSE BERHASIL', 'Stok obat berhasil dikurangi dan dicatat dalam log Farmasi.'); cariObat(); document.getElementById('f_qty').value=''; document.getElementById('f_id').value=''; } else UI.toast(res?.message || 'Error', true); } catch(err) { UI.loader(false); UI.toast('API Fetch Error', true); } };
 
-        // G. STAFF MANAGEMENT (NEW)
-        async function buildStaff(container) {
-            container.innerHTML = `
-                <div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Manajemen Staff & Dokter</h2></div>
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    <div class="lg:col-span-4 glass-card p-6 md:p-8 rounded-[2rem] border-t-8 border-brand h-fit">
-                        <h3 class="font-black mb-6 text-brand text-xl tracking-tight flex items-center"><i class="fas fa-user-plus mr-3"></i> Tambah Staff Baru</h3>
-                        <form onsubmit="submitStaff(event)" id="fStaff" class="space-y-4">
-                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Nama Lengkap / Gelar *</label><input type="text" id="st_nama" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-bold text-slate-700" required placeholder="Cth: dr. Budi, Sp.A"></div>
-                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Username *</label><input type="text" id="st_user" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-bold text-slate-700" required></div>
-                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Password *</label><input type="password" id="st_pass" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-bold text-slate-700" required></div>
-                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Role / Akses *</label><select id="st_role" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-bold text-slate-700"><option>Dokter</option><option>Frontdesk</option><option>Kasir</option><option>Apoteker</option><option>Analis Lab</option><option>Super Admin</option></select></div>
-                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Poli Spesifik</label><select id="st_poli" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-bold text-slate-700"></select></div>
-                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Jenjang Pendidikan</label><input type="text" id="st_pendidikan" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-bold text-slate-700" placeholder="Cth: Spesialis Anak"></div>
-                            <button type="submit" class="w-full bg-brand text-white font-black tracking-widest py-4 rounded-2xl shadow-lg hover:bg-branddark transition-all mt-6"><i class="fas fa-save mr-2"></i> SIMPAN STAFF</button>
-                        </form>
-                    </div>
-                    <div class="lg:col-span-8 glass-card p-6 md:p-8 rounded-[2rem] border-t-8 border-medgreen-500 overflow-y-auto max-h-[85vh] custom-scrollbar">
-                        <h3 class="font-black mb-6 text-medgreen-800 text-xl tracking-tight flex items-center"><i class="fas fa-users mr-3"></i> Daftar Staff Aktif</h3>
-                        <div class="overflow-x-auto"><table class="w-full med-table"><thead><tr><th>ID</th><th>Nama Staff & Poli</th><th>Role</th><th>Pendidikan</th><th>Status</th></tr></thead><tbody id="tblStaff"><tr><td colspan="5" class="text-center">Memuat...</td></tr></tbody></table></div>
-                    </div>
-                </div>
-            `;
-            populatePoliDropdowns();
-            loadStaffList();
-        }
-        window.loadStaffList = async () => {
-            const tb = document.getElementById('tblStaff'); tb.innerHTML = '<tr><td colspan="5" class="text-center p-6 text-slate-400"><i class="fas fa-spinner fa-spin text-2xl text-brand"></i></td></tr>';
-            try {
-                const res = await ZettBackend.call('getStaffList');
-                if(res && res.status === 'success' && Array.isArray(res.data)) {
-                    if(res.data.length === 0) tb.innerHTML = '<tr><td colspan="5" class="text-center p-6 text-slate-400 font-bold">Belum ada staff</td></tr>';
-                    else tb.innerHTML = res.data.map(s => `<tr><td class="font-mono text-xs text-slate-400">${s.id}</td><td class="font-bold text-slate-800">${s.nama} <br><span class="text-[9px] text-brand uppercase">${s.username} | ${s.poli}</span></td><td><span class="bg-blue-50 text-brand px-2 py-1 rounded text-xs font-bold">${s.role}</span></td><td class="text-xs text-slate-600 font-bold">${s.pendidikan || '-'}</td><td><span class="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest">${s.status}</span></td></tr>`).join('');
-                }
-            } catch(e) { tb.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 font-bold p-6">Error Fetching Data</td></tr>'; }
-        };
-        window.submitStaff = async (e) => {
-            e.preventDefault(); UI.loader(true, 'Menyimpan Staff...');
-            const p = { nama: document.getElementById('st_nama').value, user: document.getElementById('st_user').value, pass: document.getElementById('st_pass').value, role: document.getElementById('st_role').value, poli: document.getElementById('st_poli').value, pendidikan: document.getElementById('st_pendidikan').value };
-            try { const res = await ZettBackend.call('saveStaff', p); UI.loader(false); if(res && res.status==='success') { UI.toast('Staff ditambahkan!'); document.getElementById('fStaff').reset(); loadStaffList(); } else UI.toast(res?.message, true); } catch(err) { UI.loader(false); }
-        };
-
         // H. MANAJEMEN POLI (DINAMIS UNTUK SUPER ADMIN)
         async function buildPoli(container) {
             container.innerHTML = `
@@ -1687,7 +1664,7 @@
                 if(res && res.status==='success') { 
                     UI.toast('Poli berhasil ditambahkan!'); 
                     document.getElementById('fPoli').reset(); 
-                    fetchAntrianRealtime(true); // Auto sync to update masterPoli globally
+                    fetchAntrianRealtime(true, true); // Auto sync to update masterPoli globally
                     setTimeout(loadPoliListLocal, 1500);
                 } else UI.toast(res?.message, true); 
             } catch(err) { UI.loader(false); }
@@ -1700,7 +1677,7 @@
                 const res = await ZettBackend.call('deletePoli', id); UI.loader(false); 
                 if(res && res.status==='success') { 
                     UI.toast('Poli berhasil dihapus!'); 
-                    fetchAntrianRealtime(true);
+                    fetchAntrianRealtime(true, true);
                     setTimeout(loadPoliListLocal, 1500);
                 } else UI.toast(res?.message, true); 
             } catch(err) { UI.loader(false); }
