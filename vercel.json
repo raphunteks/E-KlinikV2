@@ -1,0 +1,19 @@
+{
+  "rewrites": [
+    {
+      "source": "/displayantrian",
+      "destination": "/index.html?view=display"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        }
+      ]
+    }
+  ]
+}

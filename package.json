@@ -1,0 +1,16 @@
+{
+  "name": "axa-eklinik-enterprise",
+  "version": "1.0.0",
+  "description": "Sistem Informasi Manajemen Klinik Terpadu V10",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve ."
+  },
+  "keywords": [
+    "klinik",
+    "simklinik",
+    "hospital-grade"
+  ],
+  "author": "Axaklinik",
+  "license": "ISC"
+}
