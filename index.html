@@ -239,7 +239,7 @@
                     
                     <div class="space-y-4">
                         <div><label class="text-slate-500">Jenis Kunjungan</label><div class="flex gap-4"><label class="flex items-center justify-center gap-2 normal-case font-bold text-slate-700 bg-slate-50 px-4 py-3 border rounded-xl cursor-pointer w-full"><input type="radio" name="o_jenis" value="Sakit" checked class="w-4 h-4 accent-brand"> Sakit</label><label class="flex items-center justify-center gap-2 normal-case font-bold text-slate-700 bg-slate-50 px-4 py-3 border rounded-xl cursor-pointer w-full"><input type="radio" name="o_jenis" value="Sehat" class="w-4 h-4 accent-brand"> Sehat</label></div></div>
-                        <div><label class="text-slate-500">Jaminan</label><select id="o_jaminan" class="input-med !bg-slate-50 border-slate-200 !text-slate-700"><option>PRIBADI</option><option>BPJS KESEHATAN</option><option>ASURANSI LAIN</option></select></div>
+                        <div><label class="text-slate-500">Jaminan</label><select id="o_jaminan" class="input-med !bg-slate-50 border-slate-200 !text-slate-700"><option>PRIBADI</option><option>BPJS Kesehatan</option><option>ASURANSI LAIN</option></select></div>
                         <div><label class="text-slate-500">Pasien Baru / Lama</label><div class="flex gap-4"><label class="flex items-center justify-center gap-2 normal-case font-bold text-slate-700 bg-slate-50 px-4 py-3 border rounded-xl cursor-pointer w-full"><input type="radio" name="o_status" value="Baru" checked onchange="toggleOnlineRM(this.value)" class="w-4 h-4 accent-brand"> Baru</label><label class="flex items-center justify-center gap-2 normal-case font-bold text-slate-700 bg-slate-50 px-4 py-3 border rounded-xl cursor-pointer w-full"><input type="radio" name="o_status" value="Lama" onchange="toggleOnlineRM(this.value)" class="w-4 h-4 accent-brand"> Lama</label></div></div>
                         <div id="boxOnlineRM" class="hidden"><label class="text-slate-500">Nomor RM (Pasien Lama)</label><input type="text" id="o_rm" class="input-med !bg-slate-50 border-slate-200 !text-slate-700 uppercase font-bold" placeholder="RM-XXXX-XXXX"></div>
                         
@@ -280,7 +280,7 @@
                     <h1 class="text-7xl md:text-8xl font-black text-brand tracking-tighter drop-shadow-md mb-3" id="trackQueueNo">B-000</h1>
                     <span class="bg-yellow-100 text-yellow-800 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest animate-pulse" id="trackStatus">MENUNGGU DILAYANI</span>
                 </div>
-                <div class="bg-slate-50 p-5 rounded-xl border border-slate-100 text-center shadow-inner">
+                <div class="bg-slate-50 p-5 rounded-xl border border-slate-100 text-center shadow-inner flex flex-col gap-2">
                     <p class="text-sm md:text-base font-black text-slate-700">Panggilan Saat Ini: <span id="trackCurrentServing" class="text-brand text-xl ml-2">B-000</span></p>
                     <p class="text-xs font-bold text-slate-500 mt-2">Sisa antrian di depan Anda: <span id="trackRemaining" class="text-red-500 font-black text-base">0</span> Pasien</p>
                 </div>
@@ -374,7 +374,7 @@
         const ZettBackend = {
             call: async function(funcName, ...args) {
                 if (GAS_URL === "ISI_URL_WEB_APP_ANDA_DISINI") {
-                    return { status: 'error', message: 'Sistem Terkunci: URL API Google Script belum diatur pada source code index.html.' };
+                    return { status: 'error', message: 'Sistem Terkunci: URL API Google Script belum diatur.' };
                 }
 
                 let dataPayload = {};
@@ -509,7 +509,7 @@
                 
                 document.getElementById('ticketQrCode').innerHTML = '';
                 if(typeof QRCode !== 'undefined') { 
-                    const dynamicUrl = window.location.origin + "/?track=" + (data.token || data.id);
+                    const dynamicUrl = window.location.origin + "/?track=" + (data.id || data.token); // FIX: Memastikan memakai ID
                     new QRCode(document.getElementById("ticketQrCode"), { text: dynamicUrl, width: 90, height: 90 }); 
                     
                     setTimeout(()=>{
@@ -530,7 +530,7 @@
                 overlay.classList.add('opacity-0'); card.classList.remove('scale-100'); card.classList.add('scale-95'); 
                 setTimeout(() => { 
                     overlay.classList.add('hidden'); 
-                    window.history.replaceState({}, document.title, "/"); // Bersihkan parameter URL
+                    window.history.replaceState({}, document.title, window.location.pathname); // Bersihkan parameter URL bersih
                 }, 300);
             }
         };
@@ -620,7 +620,7 @@
                 UI.loader(false);
                 
                 if(res && res.status === 'success' && Array.isArray(res.data)) {
-                    // Cari pasien berdasarkan ID Daftar / Token (Dari Backend)
+                    // Cari pasien berdasarkan ID Daftar (REG-XXX)
                     const patientQueue = res.data.find(a => a.idDaftar === token || a.idDaftar.includes(token));
                     
                     if(!patientQueue) {
@@ -664,31 +664,32 @@
             const trackCard = document.getElementById('liveTrackingCard');
             if(trackCard) trackCard.classList.remove('hidden');
 
-            // Ambil nomor asli dari backend, jika gagal fallback
+            // Ambil nomor asli dari backend, jika gagal fallback "N/A"
             const myQueueNo = myData.noAntrian || "N/A";
 
             // Ambil semua data pada poli yang sama
             const samePoliAll = allData.filter(a => a.poli === myData.poli);
             
             // Logika Menentukan Panggilan Saat Ini (Realtime dari Status Backend)
-            const servedQueues = samePoliAll.filter(a => a.status !== 'Menunggu');
-            let currentServingNo = "Belum Ada";
+            let currentServingNo = "-";
+            const waitingQueues = samePoliAll.filter(a => a.status === 'Menunggu');
             
-            if(servedQueues.length > 0) {
-                // Yang sudah dilayani (Diurutkan berdasarkan noAntrian terbesar yg dipanggil)
-                servedQueues.sort((a,b) => a.noAntrian.localeCompare(b.noAntrian));
-                currentServingNo = servedQueues[servedQueues.length - 1].noAntrian;
+            // Urutkan berdasarkan noAntrian (A-001, A-002, dll)
+            waitingQueues.sort((a,b) => (a.noAntrian || "").localeCompare(b.noAntrian || ""));
+            
+            if(waitingQueues.length > 0) {
+                currentServingNo = waitingQueues[0].noAntrian; // Yang paling depan ngantri
             } else {
-                // Jika belum ada yg dipanggil, berarti yg antrian terendah
-                const waitingQueues = samePoliAll.filter(a => a.status === 'Menunggu');
-                if(waitingQueues.length > 0) {
-                    waitingQueues.sort((a,b) => a.noAntrian.localeCompare(b.noAntrian));
-                    currentServingNo = waitingQueues[0].noAntrian;
+                // Kalo gaada yg menunggu, ambil yg terakhir selesai
+                const doneQueues = samePoliAll.filter(a => a.status !== 'Menunggu');
+                doneQueues.sort((a,b) => (a.noAntrian || "").localeCompare(b.noAntrian || ""));
+                if(doneQueues.length > 0) {
+                    currentServingNo = doneQueues[doneQueues.length - 1].noAntrian;
                 }
             }
 
             // Hitung sisa antrian di depan (yang statusnya Menunggu dan nomor antriannya lebih kecil)
-            const remaining = samePoliAll.filter(a => a.status === 'Menunggu' && a.noAntrian.localeCompare(myData.noAntrian) < 0).length;
+            const remaining = waitingQueues.filter(a => (a.noAntrian || "").localeCompare(myQueueNo) < 0).length;
 
             let statusText = myData.status.toUpperCase();
             let statusColor = "bg-yellow-100 text-yellow-800";
@@ -727,12 +728,12 @@
         window.printTicket = () => {
             const data = window.printTicketData;
             if(!data) return;
-            window.reprintTicket(data.id, data.rm, data.nama, data.poli, data.noAntrian, data.token || data.id);
+            window.reprintTicket(data.id, data.rm, data.nama, data.poli, data.noAntrian, data.id); // Selalu pakai data.id untuk QR Code
             UI.closeTicketModal();
         };
 
         window.reprintTicket = (id, rm, nama, poli, noAntrian, token = null) => {
-            const queueNo = noAntrian && noAntrian.includes('-') ? noAntrian : "A-000"; // Dari Backend
+            const queueNo = noAntrian && noAntrian.includes('-') ? noAntrian : "A-000"; 
             
             const pa = document.getElementById('printArea');
             let html = `
@@ -791,7 +792,7 @@
             if(window.trackingInterval) clearInterval(window.trackingInterval);
             
             // Clear URL
-            window.history.replaceState({}, document.title, "/"); 
+            window.history.replaceState({}, document.title, window.location.pathname); 
         }
         
         function logoutPasien() { 
@@ -802,7 +803,7 @@
             if(window.trackingInterval) clearInterval(window.trackingInterval);
             
             // Clear URL
-            window.history.replaceState({}, document.title, "/"); 
+            window.history.replaceState({}, document.title, window.location.pathname); 
         }
 
         // --- 4. SPA ROUTER ---
@@ -1098,10 +1099,12 @@
                 } else {
                      // Mode TV LCD (Display) -> FULL OTOMATIS BACA DARI BACKEND
                      const waiting = poliAntrian.filter(a => a.status === 'Menunggu');
+                     waiting.sort((a,b) => (a.noAntrian || "").localeCompare(b.noAntrian || ""));
                      if (waiting.length > 0) {
                          currentPatient = waiting[0];
                      } else if(poliAntrian.length > 0) {
                          const done = poliAntrian.filter(a => a.status !== 'Menunggu');
+                         done.sort((a,b) => (a.noAntrian || "").localeCompare(b.noAntrian || ""));
                          if(done.length > 0) currentPatient = done[done.length - 1];
                      }
                 }
