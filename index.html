@@ -95,12 +95,11 @@
         @keyframes gradientBG { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
         
         /* Print Configuration */
+        @media screen { #printArea { display: none; } }
         @media print { 
-            body, html { background: white !important; overflow: visible !important; height: auto !important; }
-            body * { visibility: hidden; } 
-            #printArea, #printArea * { visibility: visible; } 
-            #printArea { position: absolute; left: 0; top: 0; width: 100%; padding: 0; margin:0; } 
-            .no-print { display: none !important; } 
+            body, html { background: white !important; overflow: visible !important; height: auto !important; margin: 0; padding: 0;}
+            #viewLogin, #mainApp, #viewTracker, #globalLoader, #customAlertOverlay { display: none !important; } 
+            #printArea { display: block !important; position: absolute; left: 0; top: 0; width: 100%; padding: 0; margin:0; background: white;} 
         }
         
         /* Sliders & Canvas */
@@ -119,7 +118,7 @@
         <p class="text-brand font-black text-xl animate-pulse tracking-widest" id="loaderText">Sinkronisasi Data...</p>
     </div>
 
-    <!-- CUSTOM GLASSMORPHISM ALERT MODAL -->
+    <!-- CUSTOM GLASSMORPHISM ALERT MODAL (Pengganti window.alert) -->
     <div id="customAlertOverlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[999999] hidden flex items-center justify-center p-4 transition-opacity duration-300 opacity-0">
         <div class="bg-white/90 backdrop-blur-xl border border-white p-6 md:p-8 rounded-[2rem] shadow-2xl max-w-md w-full transform scale-95 transition-transform duration-300" id="customAlertCard">
             <div class="flex items-center gap-4 mb-4 border-b border-slate-200/50 pb-4">
@@ -220,8 +219,8 @@
             <div class="glass-card p-6 md:p-8 rounded-[2rem]">
                 <h3 class="font-black text-brand mb-6 border-b border-slate-200 pb-3 text-xl flex items-center"><i class="fas fa-file-pdf mr-3 text-brand"></i> Unduh Berkas Medis</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <button type="button" class="bg-white/80 border-2 border-white font-black text-slate-700 py-5 px-6 rounded-2xl hover:border-brand hover:text-brand shadow-sm transition-all flex justify-between items-center group" onclick="UI.toast('Fitur Unduh Lab diaktifkan saat produksi')"><span>Hasil Laboratorium</span> <i class="fas fa-download text-slate-300 group-hover:text-brand text-xl"></i></button>
-                    <button type="button" class="bg-white/80 border-2 border-white font-black text-slate-700 py-5 px-6 rounded-2xl hover:border-brand hover:text-brand shadow-sm transition-all flex justify-between items-center group" onclick="UI.toast('Fitur Unduh Surat diaktifkan saat produksi')"><span>Surat Keterangan</span> <i class="fas fa-download text-slate-300 group-hover:text-brand text-xl"></i></button>
+                    <button type="button" class="bg-white/80 border-2 border-white font-black text-slate-700 py-5 px-6 rounded-2xl hover:border-brand hover:text-brand shadow-sm transition-all flex justify-between items-center group" onclick="UI.customAlert('Pemberitahuan', 'Fitur Unduh Hasil Laboratorium (PDF) akan diaktifkan sepenuhnya saat sistem dalam mode produksi akhir.')"><span>Hasil Laboratorium</span> <i class="fas fa-download text-slate-300 group-hover:text-brand text-xl"></i></button>
+                    <button type="button" class="bg-white/80 border-2 border-white font-black text-slate-700 py-5 px-6 rounded-2xl hover:border-brand hover:text-brand shadow-sm transition-all flex justify-between items-center group" onclick="UI.customAlert('Pemberitahuan', 'Fitur Unduh Surat Keterangan Digital (PDF) akan diaktifkan sepenuhnya saat sistem dalam mode produksi akhir.')"><span>Surat Keterangan</span> <i class="fas fa-download text-slate-300 group-hover:text-brand text-xl"></i></button>
                 </div>
             </div>
         </div>
@@ -255,7 +254,7 @@
                 </div>
             </div>
             
-            <nav class="flex-1 overflow-y-auto py-6 px-4 space-y-1.5" id="navMenu"></nav>
+            <nav class="flex-1 overflow-y-auto py-6 px-4 space-y-1.5 custom-scrollbar" id="navMenu"></nav>
             
             <div class="p-5 border-t border-slate-200/50">
                 <button type="button" onclick="logout()" class="flex items-center justify-center gap-2 w-full py-4 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-xl font-black text-xs tracking-widest transition-colors shadow-sm"><i class="fas fa-power-off"></i> KELUAR SISTEM</button>
@@ -281,8 +280,8 @@
         </main>
     </div>
 
-    <!-- PRINT CONTAINER -->
-    <div id="printArea" class="hidden"></div>
+    <!-- AREA CETAK PDF (ISOLASI) -->
+    <div id="printArea"></div>
 
     <!-- ========================================== -->
     <!-- JAVASCRIPT LOGIC & FETCH API (UNTUK VERCEL)-->
@@ -337,8 +336,8 @@
             const urlParams = new URLSearchParams(window.location.search);
             const pathname = window.location.pathname;
             
-            // Fix Vercel Rewrite Detection
-            if(urlParams.get('view') === 'display' || pathname.includes('/displayantrian')) {
+            // Fix Vercel Rewrite Detection using ?view=display manually
+            if(urlParams.get('view') === 'display' || pathname.includes('displayantrian')) {
                 AppState.isDisplayMode = true;
                 document.getElementById('viewLogin').classList.add('hidden');
                 document.getElementById('mainApp').classList.remove('hidden');
@@ -351,6 +350,11 @@
                 wa.classList.add('p-0', 'm-0', 'h-full');
                 
                 loadView('antrian');
+                
+                // Auto sync every 5 seconds for display mode silently
+                setInterval(() => {
+                    fetchAntrianRealtime(true);
+                }, 5000);
             } else {
                 // Auto Login check
                 const savedUser = localStorage.getItem('axa_user');
@@ -700,7 +704,7 @@
         function buildAntrian(container) {
             container.innerHTML = `
                 <div class="h-full flex flex-col glass-card rounded-[2rem] overflow-y-auto custom-scrollbar relative">
-                    <div class="bg-gradient-to-r from-brand to-branddark p-6 md:p-8 text-white flex flex-col md:flex-row items-center gap-6 shadow-md z-10 relative border-b-4 border-blue-400 shrink-0">
+                    <div class="bg-gradient-to-r from-brand to-branddark p-5 md:p-8 text-white flex flex-col md:flex-row items-center gap-4 md:gap-6 shadow-md z-10 relative border-b-4 border-blue-400 shrink-0">
                         <div class="w-16 h-16 md:w-20 md:h-20 bg-white/20 backdrop-blur-md rounded-[1.25rem] flex items-center justify-center shadow-inner border border-white/30 overflow-hidden shrink-0">
                             <img src="axalogo.png" alt="Logo" class="w-full h-full object-contain p-2" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                             <i class="fas fa-clinic-medical text-white text-3xl hidden"></i>
@@ -709,133 +713,120 @@
                             <h1 class="text-2xl md:text-3xl lg:text-4xl font-black uppercase tracking-wider mb-1 drop-shadow-md">DISPLAY ANTRIAN KLINIK</h1>
                             <p class="font-bold opacity-90 text-xs md:text-sm tracking-widest text-blue-200">Axa E Klinik - Klinik Utama</p>
                         </div>
-                        <div class="flex gap-3 admin-control flex-wrap justify-center">
+                        ${AppState.isDisplayMode ? '' : `
+                        <div class="flex gap-3 admin-control flex-wrap justify-center mt-4 md:mt-0">
                             <button type="button" onclick="fetchAntrianRealtime()" class="bg-white/20 hover:bg-white/30 text-white font-bold px-4 py-3 rounded-xl text-xs tracking-widest transition-colors border border-white/30 shadow-sm"><i class="fas fa-sync-alt mr-2"></i> SYNC REALTIME</button>
-                            <a href="/displayantrian" target="_blank" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold px-4 py-3 rounded-xl text-xs tracking-widest transition-colors shadow-sm flex items-center"><i class="fas fa-expand mr-2"></i> BUKA DISPLAY LCD</a>
+                            <a href="?view=display" target="_blank" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold px-4 py-3 rounded-xl text-xs tracking-widest transition-colors shadow-sm flex items-center"><i class="fas fa-expand mr-2"></i> BUKA DISPLAY LCD</a>
                         </div>
+                        `}
                     </div>
                     
-                    <div class="flex-1 p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 bg-slate-50/50 min-h-0 relative">
-                        <!-- LOKET -->
-                        <div class="glass-card rounded-[2rem] border-t-[12px] border-medblue-500 shadow-xl flex flex-col relative h-full">
-                            <h2 class="text-xl md:text-2xl font-black text-medblue-900 py-4 border-b border-medblue-100 bg-white/60 backdrop-blur-md text-center shrink-0">ANTRIAN LOKET</h2>
-                            <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 relative">
-                                <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-4">
-                                    <button type="button" onclick="changeAntrian('loket', -1)" class="admin-control w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-medblue-700 rounded-full text-xl md:text-2xl font-black hover:bg-medblue-50 transition-colors shadow-md border border-slate-100">-</button>
-                                    <div class="bg-white/80 backdrop-blur px-4 py-3 md:px-6 md:py-4 rounded-[1.5rem] shadow-inner border border-white flex-1 max-w-[200px] md:max-w-[250px] text-center flex flex-col items-center justify-center">
-                                        <h1 class="text-5xl sm:text-6xl md:text-7xl xl:text-[90px] font-black text-slate-800 leading-none tracking-tighter" id="dispLoket">A-001</h1>
-                                    </div>
-                                    <button type="button" onclick="changeAntrian('loket', 1)" class="admin-control w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-medblue-700 rounded-full text-xl md:text-2xl font-black hover:bg-medblue-50 transition-colors shadow-md border border-slate-100">+</button>
-                                </div>
-                                <p class="text-sm md:text-xl font-black text-slate-600 truncate w-full text-center px-2" id="namaLoket">Hamba Allah</p>
-                            </div>
-                            <button type="button" class="admin-control bg-slate-800 text-white p-4 md:p-5 font-black tracking-widest uppercase cursor-pointer hover:bg-medblue-700 transition-colors text-sm md:text-base w-full shrink-0" onclick="panggilAudio(document.getElementById('dispLoket').innerText, 'Loket Pendaftaran', document.getElementById('namaLoket').innerText)"><i class="fas fa-volume-up mr-2"></i> PANGGIL</button>
-                        </div>
-
-                        <!-- POLI UMUM -->
-                        <div class="glass-card rounded-[2rem] border-t-[12px] border-green-500 shadow-xl flex flex-col relative group h-full">
-                            <div class="absolute inset-0 bg-green-50/40 opacity-50 z-0 pointer-events-none"></div>
-                            <h2 class="text-xl md:text-2xl font-black text-green-800 py-4 border-b border-green-100 bg-white/60 backdrop-blur-md z-10 text-center shrink-0">POLI UMUM</h2>
-                            <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 z-10">
-                                <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-4">
-                                    <button type="button" onclick="changeAntrian('poliUmum', -1)" class="admin-control w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-green-700 rounded-full text-xl md:text-2xl font-black hover:bg-green-50 transition-colors shadow-md border border-slate-100">-</button>
-                                    <div class="bg-white/80 backdrop-blur px-4 py-3 md:px-6 md:py-4 rounded-[1.5rem] shadow-inner border border-white flex-1 max-w-[200px] md:max-w-[250px] text-center flex flex-col items-center justify-center">
-                                        <h1 class="text-5xl sm:text-6xl md:text-7xl xl:text-[90px] font-black text-brand leading-none drop-shadow-sm tracking-tighter" id="dispPoliUmum">B-001</h1>
-                                    </div>
-                                    <button type="button" onclick="changeAntrian('poliUmum', 1)" class="admin-control w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-green-700 rounded-full text-xl md:text-2xl font-black hover:bg-green-50 transition-colors shadow-md border border-slate-100">+</button>
-                                </div>
-                                <p class="text-sm md:text-xl font-black text-slate-600 truncate w-full text-center px-2" id="namaPoliUmum">Hamba Allah</p>
-                                <p class="text-[10px] md:text-xs font-bold text-green-700 mt-3 bg-white/80 px-4 py-1.5 rounded-xl backdrop-blur-md border border-white shadow-sm inline-block text-center" id="dokPoliUmum">Menunggu Dokter</p>
-                            </div>
-                            <button type="button" class="admin-control bg-slate-800 text-white p-4 md:p-5 font-black tracking-widest uppercase z-10 cursor-pointer hover:bg-green-600 transition-colors text-sm md:text-base w-full shrink-0 group-hover:shadow-[0_-10px_20px_rgba(32,68,152,0.3)]" onclick="panggilAudio(document.getElementById('dispPoliUmum').innerText, 'Poli Umum', document.getElementById('namaPoliUmum').innerText)"><i class="fas fa-volume-up mr-2"></i> PANGGIL</button>
-                        </div>
-
-                        <!-- POLI GIGI -->
-                        <div class="glass-card rounded-[2rem] border-t-[12px] border-yellow-500 shadow-xl flex flex-col relative group h-full">
-                            <div class="absolute inset-0 bg-yellow-50/40 opacity-50 z-0 pointer-events-none"></div>
-                            <h2 class="text-xl md:text-2xl font-black text-yellow-800 py-4 border-b border-yellow-100 bg-white/60 backdrop-blur-md z-10 text-center shrink-0">POLI GIGI</h2>
-                            <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 z-10">
-                                <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-4">
-                                    <button type="button" onclick="changeAntrian('poliGigi', -1)" class="admin-control w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-yellow-700 rounded-full text-xl md:text-2xl font-black hover:bg-yellow-50 transition-colors shadow-md border border-slate-100">-</button>
-                                    <div class="bg-white/80 backdrop-blur px-4 py-3 md:px-6 md:py-4 rounded-[1.5rem] shadow-inner border border-white flex-1 max-w-[200px] md:max-w-[250px] text-center flex flex-col items-center justify-center">
-                                        <h1 class="text-5xl sm:text-6xl md:text-7xl xl:text-[90px] font-black text-yellow-600 leading-none drop-shadow-sm tracking-tighter" id="dispPoliGigi">C-001</h1>
-                                    </div>
-                                    <button type="button" onclick="changeAntrian('poliGigi', 1)" class="admin-control w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-yellow-700 rounded-full text-xl md:text-2xl font-black hover:bg-yellow-50 transition-colors shadow-md border border-slate-100">+</button>
-                                </div>
-                                <p class="text-sm md:text-xl font-black text-slate-600 truncate w-full text-center px-2" id="namaPoliGigi">Hamba Allah</p>
-                                <p class="text-[10px] md:text-xs font-bold text-yellow-700 mt-3 bg-white/80 px-4 py-1.5 rounded-xl backdrop-blur-md border border-white shadow-sm inline-block text-center" id="dokPoliGigi">Menunggu Dokter</p>
-                            </div>
-                            <button type="button" class="admin-control bg-slate-800 text-white p-4 md:p-5 font-black tracking-widest uppercase z-10 cursor-pointer hover:bg-yellow-500 transition-colors text-sm md:text-base w-full shrink-0 group-hover:shadow-[0_-10px_20px_rgba(234,179,8,0.3)]" onclick="panggilAudio(document.getElementById('dispPoliGigi').innerText, 'Poli Gigi', document.getElementById('namaPoliGigi').innerText)"><i class="fas fa-volume-up mr-2"></i> PANGGIL</button>
-                        </div>
-
+                    <div class="flex-1 p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 bg-slate-50/50 min-h-0 relative items-stretch" id="antrianCardsContainer">
+                        <!-- Dynamic Cards will be injected here -->
                     </div>
                     <div class="bg-slate-900 text-slate-400 p-3 text-center text-[9px] md:text-[10px] font-black tracking-widest uppercase border-t border-slate-800 shrink-0">SELAMAT DATANG DI AXA E KLINIK | MELAYANI DENGAN SEPENUH HATI</div>
                 </div>
             `;
             
             if(typeof window.antrianCounters === 'undefined') {
-                window.antrianCounters = { loket: 1, poliUmum: 1, poliGigi: 1 };
+                window.antrianCounters = { loket: 1, "Poli Umum": 1, "Poli Gigi": 1, "IGD": 1 };
                 window.antrianList = [];
-            }
-            
-            if(AppState.isDisplayMode) {
-                setTimeout(() => {
-                    document.querySelectorAll('.admin-control').forEach(el => el.classList.add('hidden'));
-                }, 100);
             }
             
             fetchAntrianRealtime();
         }
 
         window.changeAntrian = (type, amount) => {
-            window.antrianCounters[type] = Math.max(1, window.antrianCounters[type] + amount);
+            window.antrianCounters[type] = Math.max(1, (window.antrianCounters[type] || 1) + amount);
             updateDisplayAntrian();
         };
 
         window.updateDisplayAntrian = () => {
             const formatNumber = (num, prefix) => `${prefix}-${num.toString().padStart(3, '0')}`;
-            
-            const loketNum = formatNumber(window.antrianCounters.loket, 'A');
-            const umumNum = formatNumber(window.antrianCounters.poliUmum, 'B');
-            const gigiNum = formatNumber(window.antrianCounters.poliGigi, 'C');
+            const container = document.getElementById('antrianCardsContainer');
+            if(!container) return;
 
-            if (document.getElementById('dispLoket')) document.getElementById('dispLoket').innerText = loketNum;
-            if (document.getElementById('dispPoliUmum')) document.getElementById('dispPoliUmum').innerText = umumNum;
-            if (document.getElementById('dispPoliGigi')) document.getElementById('dispPoliGigi').innerText = gigiNum;
+            let activePolis = [];
+            if(window.antrianList && window.antrianList.length > 0) {
+                 activePolis = [...new Set(window.antrianList.filter(a => a.status === 'Menunggu' || a.status === 'Selesai RME').map(item => item.poli))];
+            }
+            if(activePolis.length === 0) activePolis = ["Poli Umum"]; // Fallback if no queue at all
+
+            // 1. Render Loket (Selalu ada)
+            const loketNum = formatNumber(window.antrianCounters['loket'] || 1, 'A');
+            const namaLoket = window.antrianList && window.antrianList.length > 0 ? window.antrianList[Math.min(window.antrianList.length-1, (window.antrianCounters['loket']||1)-1)]?.nama || "Hamba Allah" : "Hamba Allah";
+
+            let html = `
+                <div class="glass-card rounded-[2rem] border-t-[12px] md:border-t-[16px] border-medblue-500 shadow-xl flex flex-col relative h-full">
+                    <h2 class="text-xl md:text-2xl font-black text-medblue-900 py-4 border-b border-medblue-100 bg-white/60 backdrop-blur-md text-center shrink-0">ANTRIAN LOKET</h2>
+                    <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 relative min-h-[200px]">
+                        <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-4">
+                            ${AppState.isDisplayMode ? '' : `<button type="button" onclick="changeAntrian('loket', -1)" class="shrink-0 w-10 h-10 md:w-12 md:h-12 bg-white text-medblue-700 rounded-full text-xl md:text-2xl font-black hover:bg-medblue-50 shadow-md border border-slate-100 pb-1">-</button>`}
+                            <div class="bg-white/80 backdrop-blur px-4 py-3 md:px-6 md:py-4 rounded-[1.5rem] shadow-inner border border-white flex-1 max-w-[200px] md:max-w-[280px] text-center flex flex-col items-center justify-center">
+                                <h1 class="text-5xl md:text-7xl xl:text-[100px] font-black text-slate-800 leading-none tracking-tighter" id="dispLoket">${loketNum}</h1>
+                            </div>
+                            ${AppState.isDisplayMode ? '' : `<button type="button" onclick="changeAntrian('loket', 1)" class="shrink-0 w-10 h-10 md:w-12 md:h-12 bg-white text-medblue-700 rounded-full text-xl md:text-2xl font-black hover:bg-medblue-50 shadow-md border border-slate-100 pb-1">+</button>`}
+                        </div>
+                        <p class="text-sm md:text-xl font-black text-slate-600 truncate w-full text-center px-2" id="namaLoket">${namaLoket}</p>
+                    </div>
+                    ${AppState.isDisplayMode ? '' : `<button type="button" class="bg-slate-800 text-white p-4 md:p-5 font-black tracking-widest uppercase cursor-pointer hover:bg-medblue-700 transition-colors text-sm md:text-base w-full shrink-0" onclick="panggilAudio(document.getElementById('dispLoket').innerText, 'Loket Pendaftaran', document.getElementById('namaLoket').innerText)"><i class="fas fa-volume-up mr-2"></i> PANGGIL</button>`}
+                </div>
+            `;
+
+            // 2. Render Active Polis Dinamis
+            activePolis.forEach((poli, idx) => {
+                const prefixColor = idx % 2 === 0 ? 'green' : 'yellow';
+                const prefixAlpha = String.fromCharCode(66 + idx); // B, C, D...
+                
+                const poliId = poli;
+                const counter = window.antrianCounters[poliId] || 1;
+                const poliNum = formatNumber(counter, prefixAlpha);
+                const safeId = poliId.replace(/\s+/g, '');
+                
+                const poliAntrian = window.antrianList ? window.antrianList.filter(a => a.poli === poli) : [];
+                let namaPoli = "Hamba Allah";
+                let dokPoli = "Menunggu Dokter";
+                
+                if(poliAntrian.length > 0 && counter <= poliAntrian.length) {
+                    namaPoli = poliAntrian[counter-1].nama;
+                    dokPoli = poliAntrian[counter-1].dokter || "Menunggu Dokter";
+                }
+
+                html += `
+                    <div class="glass-card rounded-[2rem] border-t-[12px] md:border-t-[16px] border-${prefixColor}-500 shadow-xl flex flex-col relative group h-full">
+                        <div class="absolute inset-0 bg-${prefixColor}-50/40 opacity-50 z-0 pointer-events-none"></div>
+                        <h2 class="text-xl md:text-2xl font-black text-${prefixColor}-800 py-4 border-b border-${prefixColor}-100 bg-white/60 backdrop-blur-md z-10 text-center shrink-0 uppercase">${poli}</h2>
+                        <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 z-10 min-h-[200px]">
+                            <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-4">
+                                ${AppState.isDisplayMode ? '' : `<button type="button" onclick="changeAntrian('${poliId}', -1)" class="shrink-0 w-10 h-10 md:w-12 md:h-12 bg-white text-${prefixColor}-700 rounded-full text-xl md:text-2xl font-black hover:bg-${prefixColor}-50 shadow-md border border-slate-100 pb-1">-</button>`}
+                                <div class="bg-white/80 backdrop-blur px-4 py-3 md:px-6 md:py-4 rounded-[1.5rem] shadow-inner border border-white flex-1 max-w-[200px] md:max-w-[280px] text-center flex flex-col items-center justify-center">
+                                    <h1 class="text-5xl md:text-7xl xl:text-[100px] font-black text-${prefixColor==='green'?'brand':'yellow-600'} leading-none drop-shadow-sm tracking-tighter" id="disp_${safeId}">${poliNum}</h1>
+                                </div>
+                                ${AppState.isDisplayMode ? '' : `<button type="button" onclick="changeAntrian('${poliId}', 1)" class="shrink-0 w-10 h-10 md:w-12 md:h-12 bg-white text-${prefixColor}-700 rounded-full text-xl md:text-2xl font-black hover:bg-${prefixColor}-50 shadow-md border border-slate-100 pb-1">+</button>`}
+                            </div>
+                            <p class="text-sm md:text-xl font-black text-slate-600 truncate w-full text-center px-2" id="nama_${safeId}">${namaPoli}</p>
+                            <p class="text-[10px] md:text-xs font-bold text-${prefixColor}-700 mt-2 bg-white/80 px-4 py-1.5 rounded-xl backdrop-blur-md border border-white shadow-sm inline-block text-center" id="dok_${safeId}">${dokPoli}</p>
+                        </div>
+                        ${AppState.isDisplayMode ? '' : `<button type="button" class="bg-slate-800 text-white p-4 md:p-5 font-black tracking-widest uppercase z-10 cursor-pointer hover:bg-${prefixColor}-600 transition-colors text-sm md:text-base w-full shrink-0 group-hover:shadow-[0_-10px_20px_rgba(32,68,152,0.3)]" onclick="panggilAudio(document.getElementById('disp_${safeId}').innerText, '${poli}', document.getElementById('nama_${safeId}').innerText)"><i class="fas fa-volume-up mr-2"></i> PANGGIL</button>`}
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
             if (document.getElementById('fdDispLoket')) document.getElementById('fdDispLoket').innerText = loketNum;
-
-            const updateInfo = (poliFilter, index, idNama, idDokter) => {
-                if(!window.antrianList || window.antrianList.length === 0) {
-                    if(document.getElementById(idNama)) document.getElementById(idNama).innerText = "Hamba Allah";
-                    if(idDokter && document.getElementById(idDokter)) document.getElementById(idDokter).innerText = "Menunggu Dokter";
-                    return;
-                }
-                const filtered = window.antrianList.filter(a => poliFilter === 'All' || a.poli === poliFilter);
-                if(filtered.length >= index) {
-                    if(document.getElementById(idNama)) document.getElementById(idNama).innerText = filtered[index-1].nama;
-                    if(idDokter && document.getElementById(idDokter)) document.getElementById(idDokter).innerText = filtered[index-1].dokter || "Menunggu Dokter";
-                } else {
-                    if(document.getElementById(idNama)) document.getElementById(idNama).innerText = "Hamba Allah";
-                    if(idDokter && document.getElementById(idDokter)) document.getElementById(idDokter).innerText = "Menunggu Dokter";
-                }
-            };
-
-            updateInfo('All', window.antrianCounters.loket, 'namaLoket', null);
-            updateInfo('Poli Umum', window.antrianCounters.poliUmum, 'namaPoliUmum', 'dokPoliUmum');
-            updateInfo('Poli Gigi', window.antrianCounters.poliGigi, 'namaPoliGigi', 'dokPoliGigi');
         };
 
-        window.fetchAntrianRealtime = async () => {
+        window.fetchAntrianRealtime = async (silent = false) => {
             try {
-                if(!AppState.isDisplayMode) UI.loader(true, 'Sinkronisasi Realtime...');
+                if(!silent && !AppState.isDisplayMode) UI.loader(true, 'Sinkronisasi Realtime...');
                 const res = await ZettBackend.call('getAntrianAktif');
-                if(!AppState.isDisplayMode) UI.loader(false);
+                if(!silent && !AppState.isDisplayMode) UI.loader(false);
                 if(res && res.status==='success' && Array.isArray(res.data)) {
                     window.antrianList = res.data.reverse(); 
                     updateDisplayAntrian();
-                    if(!AppState.isDisplayMode) UI.toast('Data Antrian Tersinkronisasi');
+                    if(!silent && !AppState.isDisplayMode) UI.toast('Data Antrian Tersinkronisasi');
                 }
-            } catch(e) { if(!AppState.isDisplayMode) UI.loader(false); }
+            } catch(e) { if(!silent && !AppState.isDisplayMode) UI.loader(false); }
         };
 
         window.panggilAudio = (nomor, poli, nama = "Hamba Allah") => { 
@@ -995,6 +986,7 @@
         }
         window.selectRME = async (id, rm, nama) => { 
             document.getElementById('rmeOverlay').classList.add('hidden'); document.getElementById('rmeNm').textContent = nama; document.getElementById('rmeRm').textContent = rm; 
+            document.getElementById('rmeIdDaftar').value = id;
             document.getElementById('panelCPPT').style.display = 'block'; document.getElementById('cpptHistoryBox').innerHTML = '<tr><td colspan="4" class="text-center py-8 text-slate-400"><i class="fas fa-circle-notch fa-spin text-2xl"></i></td></tr>';
             try {
                 const res = await ZettBackend.call('getRiwayatCPPT', rm); const hb = document.getElementById('cpptHistoryBox');
@@ -1073,7 +1065,7 @@
         };
         function cetakStrukKasir(p, t) {
             const pa = document.getElementById('printArea');
-            pa.innerHTML = `<div style="width: 80mm; padding: 5mm; font-family: monospace; font-size:12px; margin: 0 auto;"><div style="text-align: center;"><h2 style="margin:0; font-size: 20px;">AXA KLINIK</h2><p style="margin:5px 0;">NOTA PEMBAYARAN RESMI</p></div><hr style="border-top:1px dashed #000; margin: 10px 0;"><p style="margin:2px 0;">TRX ID : ${p.trxId}</p><p style="margin:2px 0;">WAKTU  : ${new Date().toLocaleString('id-ID')}</p><p style="margin:2px 0;">KASIR  : ${AppState.user?.name || 'Kasir'}</p><hr style="border-top:1px dashed #000; margin: 10px 0;"><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>TOTAL TAGIHAN</span> <span style="font-size:14px; font-weight:bold;">Rp ${t.toLocaleString('id-ID')}</span></div><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>BAYAR (${p.metode})</span> <span>Rp ${p.dibayar.toLocaleString('id-ID')}</span></div><hr style="border-top:1px dashed #000; margin: 10px 0;"><div style="display:flex; justify-content:space-between; font-weight:bold; font-size:14px;"><span>KEMBALIAN</span> <span>Rp ${p.kembalian.toLocaleString('id-ID')}</span></div><div style="text-align: center; margin-top:20px; font-size: 10px;"><p>Terima kasih atas kunjungan Anda.<br>Semoga lekas sembuh.</p></div></div>`;
+            pa.innerHTML = `<div style="width: 80mm; padding: 5mm; font-family: monospace; font-size:12px; margin: 0 auto;"><div style="text-align: center;"><h2 style="margin:0; font-size: 20px;">AXA E KLINIK</h2><p style="margin:5px 0;">NOTA PEMBAYARAN RESMI</p></div><hr style="border-top:1px dashed #000; margin: 10px 0;"><p style="margin:2px 0;">TRX ID : ${p.trxId}</p><p style="margin:2px 0;">WAKTU  : ${new Date().toLocaleString('id-ID')}</p><p style="margin:2px 0;">KASIR  : ${AppState.user?.name || 'Kasir'}</p><hr style="border-top:1px dashed #000; margin: 10px 0;"><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>TOTAL TAGIHAN</span> <span style="font-size:14px; font-weight:bold;">Rp ${t.toLocaleString('id-ID')}</span></div><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>BAYAR (${p.metode})</span> <span>Rp ${p.dibayar.toLocaleString('id-ID')}</span></div><hr style="border-top:1px dashed #000; margin: 10px 0;"><div style="display:flex; justify-content:space-between; font-weight:bold; font-size:14px;"><span>KEMBALIAN</span> <span>Rp ${p.kembalian.toLocaleString('id-ID')}</span></div><div style="text-align: center; margin-top:20px; font-size: 10px;"><p>Terima kasih atas kunjungan Anda.<br>Semoga lekas sembuh.</p></div></div>`;
             window.print();
         }
 
@@ -1174,7 +1166,7 @@
             `;
             cariObat(); 
         }
-        window.cariObat = async () => { const kw = document.getElementById('searchObatInput').value; const c = document.getElementById('hasilCariObat'); c.innerHTML = '<div class="text-center p-8"><i class="fas fa-circle-notch fa-spin text-medblue-400 text-3xl"></i></div>'; try { const res = await ZettBackend.call('searchObatBackend', kw); if(res && res.status === 'success') { if(!res.data || res.data.length === 0) c.innerHTML = '<div class="bg-red-50 text-red-600 p-4 rounded-xl text-center font-black border border-red-100">Obat tidak ditemukan di API.</div>'; else c.innerHTML = res.data.map(o => `<div class="p-4 border-2 rounded-2xl flex justify-between items-center transition-all hover:shadow-md ${o.stok <= o.min ? 'bg-red-50/80 border-red-200' : 'bg-white border-slate-100 hover:border-brand'}"><div><p class="font-black text-slate-800 text-lg">${o.nama}</p><p class="text-[10px] text-slate-400 mt-1 font-mono">${o.id} | <span class="bg-slate-100 px-2 py-1 rounded font-bold">${o.kategori}</span></p><p class="text-sm mt-2 font-black">Stok: <span class="${o.stok <= o.min ? 'text-red-600 bg-red-100 px-2 py-0.5 rounded-lg':'text-medgreen-600'}">${o.stok}</span></p></div><button type="button" onclick="document.getElementById('f_id').value='${o.id}'" class="bg-blue-50 text-brand hover:bg-brand hover:text-white px-5 py-3 rounded-xl text-sm font-black transition-colors shadow-sm">Pilih</button></div>`).join(''); } } catch(err) { c.innerHTML='<div class="text-center p-4 font-bold text-red-500">API Server Error</div>'; } };
+        window.cariObat = async () => { const kw = document.getElementById('searchObatInput').value; const c = document.getElementById('hasilCariObat'); c.innerHTML = '<div class="text-center p-8"><i class="fas fa-circle-notch fa-spin text-medblue-400 text-3xl"></i></div>'; try { const res = await ZettBackend.call('searchObatBackend', kw); if(res && res.status === 'success') { if(!res.data || res.data.length === 0) c.innerHTML = '<div class="bg-red-50 text-red-600 p-4 rounded-xl text-center font-black border border-red-100">Obat tidak ditemukan di API.</div>'; else c.innerHTML = res.data.map(o => `<div class="p-4 border-2 rounded-2xl flex justify-between items-center transition-all hover:shadow-md ${o.stok <= o.min ? 'bg-red-50/80 border-red-200' : 'bg-white/80 backdrop-blur-sm border-slate-100 hover:border-brand'}"><div><p class="font-black text-slate-800 text-lg">${o.nama}</p><p class="text-[10px] text-slate-400 mt-1 font-mono">${o.id} | <span class="bg-slate-100 px-2 py-1 rounded font-bold">${o.kategori}</span></p><p class="text-sm mt-2 font-black">Stok: <span class="${o.stok <= o.min ? 'text-red-600 bg-red-100 px-2 py-0.5 rounded-lg':'text-medgreen-600'}">${o.stok}</span></p></div><button type="button" onclick="document.getElementById('f_id').value='${o.id}'" class="bg-blue-50 text-brand hover:bg-brand hover:text-white px-5 py-3 rounded-xl text-sm font-black transition-colors shadow-sm">Pilih</button></div>`).join(''); } } catch(err) { c.innerHTML='<div class="text-center p-4 font-bold text-red-500">API Server Error</div>'; } };
         window.submitDispense = async (e) => { e.preventDefault(); const idObat = document.getElementById('f_id').value; if(!idObat) return UI.toast('Pilih obat dari tabel kiri!', true); let dArr = []; if(document.getElementById('d_pagi').checked) dArr.push('Pagi'); if(document.getElementById('d_siang').checked) dArr.push('Siang'); if(document.getElementById('d_sore').checked) dArr.push('Malam'); const p = { idObat: idObat, qty: document.getElementById('f_qty').value, dosis: dArr.length ? dArr.join(', ') : 'Sesuai Anjuran', apoteker: AppState.user?.name || 'Apoteker' }; UI.loader(true, 'POST API Dispense...'); try { const res = await ZettBackend.call('dispenseObat', p); UI.loader(false); if(res && res.status==='success') { UI.customAlert('DISPENSE BERHASIL', 'Stok obat berhasil dikurangi dan dicatat dalam log Farmasi.'); cariObat(); document.getElementById('f_qty').value=''; document.getElementById('f_id').value=''; } else UI.toast(res?.message || 'Error', true); } catch(err) { UI.loader(false); UI.toast('API Fetch Error', true); } };
 
         // G. STAFF MANAGEMENT (NEW)
