@@ -109,9 +109,9 @@
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 26px; width: 26px; border-radius: 50%; background: #ef4444; cursor: pointer; margin-top: -9px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 3px solid white; } 
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 8px; cursor: pointer; background: #e2e8f0; border-radius: 4px; }
         
-        /* Fluid Typography for Antrian numbers */
+        /* Fluid Typography for Antrian numbers to fix scaling issues */
         .antrian-number {
-            font-size: clamp(4rem, 12vw, 7rem);
+            font-size: clamp(3.5rem, 6vw, 6.5rem);
             line-height: 1;
         }
     </style>
@@ -252,7 +252,7 @@
                             <div><label class="text-slate-500">Gender *</label><select id="o_jk" class="input-med !bg-slate-50 border-slate-200 !text-slate-700"><option>Laki-Laki</option><option>Perempuan</option></select></div>
                         </div>
                         <div><label class="text-slate-500">No HP / WhatsApp *</label><input type="tel" id="o_hp" class="input-med !bg-slate-50 border-slate-200 !text-slate-700" required></div>
-                        <div><label class="text-slate-500">Poli Tujuan *</label><select id="o_poli" class="input-med !bg-slate-50 border-slate-200 !text-slate-700"><option>Poli Umum</option><option>Poli Gigi</option></select></div>
+                        <div><label class="text-slate-500">Poli Tujuan *</label><select id="o_poli" class="input-med !bg-slate-50 border-slate-200 !text-slate-700"><option>Poli Umum</option><option>Poli Gigi</option><option>IGD</option></select></div>
                         <div><label class="text-slate-500">Dokter Tujuan *</label><select id="o_dokter" class="input-med !bg-slate-50 border-slate-200 !text-slate-700"><option>drg. Hj. Kurniawaty, Sp.KG</option><option>dr. Arsyad, Sp.U</option><option>drg. Andi Rifka Rahmayanti, S.KG</option></select></div>
                         <div><label class="text-slate-500">Keluhan</label><textarea id="o_keluhan" class="input-med !bg-slate-50 border-slate-200 !text-slate-700 resize-none" rows="2"></textarea></div>
 
@@ -529,7 +529,7 @@
                 overlay.classList.add('opacity-0'); card.classList.remove('scale-100'); card.classList.add('scale-95'); 
                 setTimeout(() => { 
                     overlay.classList.add('hidden'); 
-                    window.history.replaceState({}, document.title, window.location.pathname); // Bersihkan parameter URL
+                    window.history.replaceState({}, document.title, window.location.pathname); // Bersihkan parameter URL bersih
                 }, 300);
             }
         };
@@ -938,11 +938,11 @@
                             <h3 class="font-black text-slate-800 text-xs tracking-widest uppercase mb-4 text-center">Kontrol Pemanggilan Manual</h3>
                             <div class="bg-white/50 backdrop-blur border border-white p-4 rounded-2xl shadow-sm flex flex-col items-center">
                                 <div class="flex items-center justify-center w-full gap-3 mb-4">
-                                    <button type="button" onclick="changeAntrian('loket', -1)" class="shrink-0 w-12 h-12 bg-white text-medblue-600 rounded-full text-2xl font-black hover:bg-medblue-50 shadow-md border border-slate-100 flex items-center justify-center transition-transform active:scale-95">-</button>
+                                    <button type="button" onclick="changeAntrian('loket', -1)" class="shrink-0 w-12 h-12 bg-white text-medblue-600 rounded-full text-2xl font-black hover:bg-medblue-50 shadow-md border border-slate-100 flex items-center justify-center transition-transform active:scale-95"><i class="fas fa-minus"></i></button>
                                     <div class="bg-slate-50 px-4 py-3 rounded-2xl shadow-inner border border-slate-200 flex-1 text-center flex items-center justify-center min-h-[60px]">
                                         <h1 class="text-3xl font-black text-slate-800 tracking-tighter" id="fdDispLoket">A-001</h1>
                                     </div>
-                                    <button type="button" onclick="changeAntrian('loket', 1)" class="shrink-0 w-12 h-12 bg-white text-medblue-600 rounded-full text-2xl font-black hover:bg-medblue-50 shadow-md border border-slate-100 flex items-center justify-center transition-transform active:scale-95">+</button>
+                                    <button type="button" onclick="changeAntrian('loket', 1)" class="shrink-0 w-12 h-12 bg-white text-medblue-600 rounded-full text-2xl font-black hover:bg-medblue-50 shadow-md border border-slate-100 flex items-center justify-center transition-transform active:scale-95"><i class="fas fa-plus"></i></button>
                                 </div>
                                 <button type="button" onclick="panggilAudio(document.getElementById('fdDispLoket').innerText, 'Loket Pendaftaran', document.getElementById('namaLoket')?.innerText)" class="w-full bg-slate-800 text-white py-3.5 rounded-xl font-black shadow-lg hover:bg-slate-900 transition-all active:scale-95 tracking-widest text-xs"><i class="fas fa-volume-up mr-2"></i> PANGGIL LOKET</button>
                             </div>
@@ -1060,57 +1060,53 @@
             if(activePolis.length === 0) activePolis = ["Poli Umum"]; // Fallback 
 
             const loketNum = formatNumber(window.antrianCounters['loket'] || 1, 'A');
-            const namaLoket = window.antrianList && window.antrianList.length > 0 ? window.antrianList[Math.min(window.antrianList.length-1, (window.antrianCounters['loket']||1)-1)]?.nama || "Hamba Allah" : "Hamba Allah";
-
+            
             let html = `
-                <div class="glass-card rounded-3xl border-t-[12px] border-medblue-500 shadow-xl flex flex-col bg-white overflow-hidden relative h-full">
-                    <h2 class="text-lg md:text-xl font-black text-medblue-900 py-4 border-b border-slate-100 bg-slate-50/80 text-center shrink-0 tracking-wider">ANTRIAN LOKET</h2>
-                    <div class="flex-1 flex flex-col items-center justify-center p-6 md:p-8">
-                        <div class="flex items-center justify-center w-full gap-3 md:gap-5 mb-6">
-                            ${AppState.isDisplayMode ? '' : `<button type="button" onclick="changeAntrian('loket', -1)" class="shrink-0 w-12 h-12 bg-white text-medblue-600 rounded-full text-2xl font-black hover:bg-medblue-50 shadow-md border border-slate-100 flex items-center justify-center transition-transform active:scale-95">-</button>`}
-                            <div class="bg-slate-50 px-4 py-6 rounded-2xl shadow-inner border border-slate-200 flex-1 text-center flex items-center justify-center min-h-[140px]">
+                <div class="glass-card rounded-3xl border-t-[12px] md:border-t-[16px] border-slate-700 shadow-2xl flex flex-col bg-white overflow-hidden relative h-full">
+                    <h2 class="text-lg md:text-xl font-black text-slate-100 py-4 border-b border-slate-800 bg-slate-800 text-center shrink-0 tracking-wider">ANTRIAN LOKET</h2>
+                    <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 relative">
+                        <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-4">
+                            ${AppState.isDisplayMode ? '' : `<button type="button" onclick="changeAntrian('loket', -1)" class="shrink-0 w-10 h-10 md:w-14 md:h-14 bg-white text-slate-800 rounded-full text-2xl font-black hover:bg-slate-100 shadow-md border border-slate-200 flex items-center justify-center transition-transform active:scale-95"><i class="fas fa-minus"></i></button>`}
+                            <div class="bg-slate-50 px-2 py-6 rounded-2xl shadow-inner border border-slate-200 flex-1 text-center flex items-center justify-center min-h-[120px] w-full">
                                 <h1 class="antrian-number font-black text-slate-800 tracking-tighter" id="dispLoket">${loketNum}</h1>
                             </div>
-                            ${AppState.isDisplayMode ? '' : `<button type="button" onclick="changeAntrian('loket', 1)" class="shrink-0 w-12 h-12 bg-white text-medblue-600 rounded-full text-2xl font-black hover:bg-medblue-50 shadow-md border border-slate-100 flex items-center justify-center transition-transform active:scale-95">+</button>`}
+                            ${AppState.isDisplayMode ? '' : `<button type="button" onclick="changeAntrian('loket', 1)" class="shrink-0 w-10 h-10 md:w-14 md:h-14 bg-white text-slate-800 rounded-full text-2xl font-black hover:bg-slate-100 shadow-md border border-slate-200 flex items-center justify-center transition-transform active:scale-95"><i class="fas fa-plus"></i></button>`}
                         </div>
-                        <p class="text-base md:text-xl font-black text-slate-700 truncate w-full text-center px-2" id="namaLoket">${namaLoket}</p>
+                        <p class="text-sm md:text-lg font-black text-slate-500 w-full text-center px-2 leading-tight">Panggilan Pendaftaran Awal</p>
                     </div>
-                    ${AppState.isDisplayMode ? '' : `<button type="button" class="mt-auto shrink-0 bg-slate-800 text-white p-5 font-black tracking-widest uppercase cursor-pointer hover:bg-medblue-700 transition-colors text-sm w-full" onclick="panggilAudio(document.getElementById('dispLoket').innerText, 'Loket Pendaftaran', document.getElementById('namaLoket').innerText)"><i class="fas fa-volume-up mr-2"></i> PANGGIL</button>`}
+                    ${AppState.isDisplayMode ? '' : `<button type="button" class="mt-auto shrink-0 bg-slate-900 text-white p-5 font-black tracking-widest uppercase cursor-pointer hover:bg-black transition-colors text-sm w-full" onclick="panggilAudio(document.getElementById('dispLoket').innerText, 'Loket Pendaftaran', '')"><i class="fas fa-volume-up mr-2"></i> PANGGIL LOKET</button>`}
                 </div>
             `;
 
             activePolis.forEach((poli, idx) => {
                 const prefixColor = idx % 2 === 0 ? 'green' : 'yellow';
-                const prefixAlpha = String.fromCharCode(66 + idx); 
-                
                 const poliId = poli;
                 const safeId = poliId.replace(/\s+/g, '');
                 
                 const poliAntrian = window.antrianList ? window.antrianList.filter(a => a.poli === poli) : [];
                 poliAntrian.sort((a,b) => (a.noAntrian || "").localeCompare(b.noAntrian || ""));
                 
-                let currentPatient = null;
+                let activeIndex = poliAntrian.findIndex(a => a.status === 'Menunggu');
+                if(activeIndex === -1) {
+                    activeIndex = poliAntrian.length > 0 ? poliAntrian.length - 1 : 0;
+                }
+                
+                let displayIndex = activeIndex;
+                
                 if (!AppState.isDisplayMode) {
-                     // Mode Admin (Frontdesk) -> Bisa kontrol manual lewat tombol +/-
-                     const counter = window.antrianCounters[poliId] || 1;
-                     if(poliAntrian.length > 0 && counter <= poliAntrian.length) {
-                          currentPatient = poliAntrian[counter-1];
+                     if(!window.antrianCounters[poliId] || window.antrianCounters[poliId] > poliAntrian.length) {
+                         window.antrianCounters[poliId] = activeIndex + 1; 
                      }
-                } else {
-                     // Mode TV LCD (Display) -> FULL OTOMATIS BACA DARI BACKEND
-                     const waiting = poliAntrian.filter(a => a.status === 'Menunggu');
-                     waiting.sort((a,b) => (a.noAntrian || "").localeCompare(b.noAntrian || ""));
-                     if (waiting.length > 0) {
-                         currentPatient = waiting[0];
-                     } else if(poliAntrian.length > 0) {
-                         const done = poliAntrian.filter(a => a.status !== 'Menunggu');
-                         done.sort((a,b) => (a.noAntrian || "").localeCompare(b.noAntrian || ""));
-                         if(done.length > 0) currentPatient = done[done.length - 1];
-                     }
+                     displayIndex = (window.antrianCounters[poliId] || 1) - 1;
                 }
 
-                let poliNum = "N/A";
-                let namaPoli = "Hamba Allah";
+                let currentPatient = null;
+                if(poliAntrian.length > 0 && displayIndex >= 0 && displayIndex < poliAntrian.length) {
+                    currentPatient = poliAntrian[displayIndex];
+                }
+
+                let poliNum = "-";
+                let namaPoli = "Tidak Ada Antrian";
                 let dokPoli = "Menunggu Dokter";
 
                 if(currentPatient) {
@@ -1120,21 +1116,21 @@
                 }
 
                 html += `
-                    <div class="glass-card rounded-3xl border-t-[12px] border-${prefixColor}-500 shadow-xl flex flex-col bg-white overflow-hidden relative h-full">
+                    <div class="glass-card rounded-3xl border-t-[12px] md:border-t-[16px] border-${prefixColor}-500 shadow-2xl flex flex-col bg-white overflow-hidden relative h-full min-h-[350px]">
                         <div class="absolute inset-0 bg-${prefixColor}-50/30 opacity-50 z-0 pointer-events-none"></div>
-                        <h2 class="text-lg md:text-xl font-black text-${prefixColor}-800 py-4 border-b border-${prefixColor}-100 bg-${prefixColor}-50/80 z-10 text-center shrink-0 uppercase tracking-wider">${poli}</h2>
-                        <div class="flex-1 flex flex-col items-center justify-center p-6 md:p-8 z-10">
-                            <div class="flex items-center justify-center w-full gap-3 md:gap-5 mb-6">
-                                ${AppState.isDisplayMode ? '' : `<button type="button" onclick="changeAntrian('${poliId}', -1)" class="shrink-0 w-12 h-12 bg-white text-${prefixColor}-600 rounded-full text-2xl font-black hover:bg-${prefixColor}-50 shadow-md border border-slate-100 flex items-center justify-center transition-transform active:scale-95">-</button>`}
-                                <div class="bg-white px-4 py-6 rounded-2xl shadow-inner border border-slate-100 flex-1 text-center flex items-center justify-center min-h-[140px]">
+                        <h2 class="text-lg md:text-xl font-black text-white py-4 border-b border-${prefixColor}-600 bg-${prefixColor}-600 z-10 text-center shrink-0 uppercase tracking-wider">${poli}</h2>
+                        <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 z-10">
+                            <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-4">
+                                ${AppState.isDisplayMode ? '' : `<button type="button" onclick="changeAntrian('${poliId}', -1)" class="shrink-0 w-10 h-10 md:w-14 md:h-14 bg-white text-${prefixColor}-600 rounded-full text-2xl font-black hover:bg-${prefixColor}-50 shadow-md border border-slate-200 flex items-center justify-center transition-transform active:scale-95"><i class="fas fa-minus"></i></button>`}
+                                <div class="bg-white px-2 py-6 rounded-2xl shadow-inner border border-slate-100 flex-1 text-center flex items-center justify-center min-h-[120px] w-full">
                                     <h1 class="antrian-number font-black text-${prefixColor==='green'?'brand':'yellow-600'} drop-shadow-sm tracking-tighter" id="disp_${safeId}">${poliNum}</h1>
                                 </div>
-                                ${AppState.isDisplayMode ? '' : `<button type="button" onclick="changeAntrian('${poliId}', 1)" class="shrink-0 w-12 h-12 bg-white text-${prefixColor}-600 rounded-full text-2xl font-black hover:bg-${prefixColor}-50 shadow-md border border-slate-100 flex items-center justify-center transition-transform active:scale-95">+</button>`}
+                                ${AppState.isDisplayMode ? '' : `<button type="button" onclick="changeAntrian('${poliId}', 1)" class="shrink-0 w-10 h-10 md:w-14 md:h-14 bg-white text-${prefixColor}-600 rounded-full text-2xl font-black hover:bg-${prefixColor}-50 shadow-md border border-slate-200 flex items-center justify-center transition-transform active:scale-95"><i class="fas fa-plus"></i></button>`}
                             </div>
-                            <p class="text-base md:text-xl font-black text-slate-700 truncate w-full text-center px-2" id="nama_${safeId}">${namaPoli}</p>
-                            <p class="text-[10px] md:text-xs font-bold text-${prefixColor}-800 mt-3 bg-${prefixColor}-100 px-4 py-1.5 rounded-full border border-${prefixColor}-200 shadow-sm inline-block text-center" id="dok_${safeId}">${dokPoli}</p>
+                            <p class="text-base md:text-xl font-black text-slate-800 w-full text-center px-2 leading-tight min-h-[3rem] flex items-center justify-center" id="nama_${safeId}">${namaPoli}</p>
+                            <p class="text-[10px] md:text-xs font-bold text-${prefixColor}-800 mt-2 bg-${prefixColor}-100 px-4 py-1.5 rounded-full border border-${prefixColor}-200 shadow-sm inline-block text-center" id="dok_${safeId}">${dokPoli}</p>
                         </div>
-                        ${AppState.isDisplayMode ? '' : `<button type="button" class="mt-auto shrink-0 bg-slate-800 text-white p-5 font-black tracking-widest uppercase z-10 cursor-pointer hover:bg-${prefixColor}-600 transition-colors text-sm w-full group-hover:shadow-[0_-10px_20px_rgba(32,68,152,0.3)]" onclick="panggilAudio(document.getElementById('disp_${safeId}').innerText, '${poli}', document.getElementById('nama_${safeId}').innerText)"><i class="fas fa-volume-up mr-2"></i> PANGGIL</button>`}
+                        ${AppState.isDisplayMode ? '' : `<button type="button" class="mt-auto shrink-0 bg-slate-800 text-white p-5 font-black tracking-widest uppercase z-10 cursor-pointer hover:bg-${prefixColor}-700 transition-colors text-sm w-full group-hover:shadow-[0_-10px_20px_rgba(32,68,152,0.3)]" onclick="panggilAudio(document.getElementById('disp_${safeId}').innerText, '${poli}', document.getElementById('nama_${safeId}').innerText)"><i class="fas fa-volume-up mr-2"></i> PANGGIL</button>`}
                     </div>
                 `;
             });
@@ -1162,8 +1158,9 @@
             
             const splitNomor = nomor.split('').map(c => c === '-' ? ' ' : c).join(' ');
             let text = `Mohon perhatian. Panggilan kepada nomor antrian, ${splitNomor}. `;
-            if(nama && nama !== "Hamba Allah" && nama !== "Nama Pasien") text += `Atas nama, Bapak atau Ibu, ${nama}. `;
-            text += `Dimohon untuk segera menuju ke, ${poli}. Terima kasih.`; 
+            if(nama && nama !== "Hamba Allah" && nama !== "Nama Pasien" && nama !== "") text += `Atas nama, Bapak atau Ibu, ${nama}. `;
+            if(poli !== "") text += `Dimohon untuk segera menuju ke, ${poli}.`; 
+            text += ` Terima kasih.`;
 
             const speakText = () => {
                 if(window.speechSynthesis.speaking) window.speechSynthesis.cancel();
@@ -1407,7 +1404,7 @@
                     const pa = document.getElementById('printArea'); pa.innerHTML = `
                         <div style="width:100%; max-width:800px; margin:0 auto; padding:40px; font-family:sans-serif; color:black;">
                             <div style="text-align:center; border-bottom:3px solid #000; padding-bottom:10px; margin-bottom:20px; display:flex; align-items:center;">
-                                <div style="width:80px; height:80px; border:1px solid #000; border-radius:15px; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:10px; overflow:hidden;">
+                                <div style="width:80px; height:80px; border:1px solid #000; border-radius:15px; display:flex; align-items:center; justify-content:center; overflow:hidden;">
                                     <img src="axalogo.png" style="width:100%; height:100%; object-fit:contain;" onerror="this.style.display='none'">
                                 </div>
                                 <div style="flex:1;">
