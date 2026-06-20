@@ -3,6 +3,10 @@
     {
       "source": "/displayantrian",
       "destination": "/index.html?view=display"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
   "headers": [
