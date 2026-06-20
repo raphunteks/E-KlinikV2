@@ -98,7 +98,7 @@
         @media screen { #printArea { display: none; } }
         @media print { 
             body, html { background: white !important; overflow: visible !important; height: auto !important; margin: 0; padding: 0;}
-            #viewLogin, #mainApp, #viewTracker, #globalLoader, #customAlertOverlay, #ticketModalOverlay { display: none !important; } 
+            #viewLogin, #mainApp, #viewTracker, #globalLoader, #customAlertOverlay, #ticketModalOverlay, #trackingModalOverlay { display: none !important; } 
             #printArea { display: block !important; position: absolute; left: 0; top: 0; width: 100%; padding: 0; margin:0; background: white;} 
         }
         
@@ -111,7 +111,7 @@
         
         /* Fluid Typography for Antrian numbers */
         .antrian-number {
-            font-size: clamp(3rem, 8vw, 6rem);
+            font-size: clamp(4rem, 12vw, 7rem);
             line-height: 1;
         }
     </style>
@@ -135,6 +135,28 @@
             </div>
             <p class="text-slate-600 font-bold text-sm leading-relaxed mb-8" id="customAlertMessage">Pesan akan muncul disini...</p>
             <button type="button" onclick="UI.closeCustomAlert()" class="w-full bg-brand text-white font-black py-4 rounded-xl shadow-lg hover:bg-branddark transition-all transform hover:-translate-y-1 tracking-widest text-sm outline-none">OKE, MENGERTI</button>
+        </div>
+    </div>
+
+    <!-- MODAL LIVE TRACKING (Untuk Pasien via QR) -->
+    <div id="trackingModalOverlay" class="fixed inset-0 bg-slate-900/80 backdrop-blur-xl z-[999999] hidden flex items-center justify-center p-4 transition-opacity duration-300 opacity-0">
+        <div class="bg-white/90 backdrop-blur-xl border border-white p-6 md:p-8 rounded-[2rem] shadow-2xl max-w-md w-full transform scale-95 transition-transform duration-300" id="trackingModalCard">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-brand rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg border border-slate-100 overflow-hidden">
+                    <img src="axalogo.png" alt="Axa Logo" class="w-full h-full object-contain p-2" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                    <i class="fas fa-search text-white text-xl hidden"></i>
+                </div>
+                <h3 class="font-black text-slate-800 text-xl tracking-tight">Verifikasi Live Tracking</h3>
+                <p class="text-xs text-slate-500 font-bold mt-2">Sistem mendeteksi Token Antrian. Masukkan Tgl Lahir Pasien untuk melihat berkas.</p>
+            </div>
+            <form onsubmit="verifyLiveTracking(event)" class="space-y-4">
+                <input type="hidden" id="track_token">
+                <div><label>Tanggal Lahir Pasien * (Abaikan untuk Demo)</label><input type="date" id="track_dob" class="input-med"></div>
+                <div class="flex gap-3 mt-4">
+                    <button type="button" onclick="UI.closeTrackingModal()" class="w-1/3 bg-slate-100 text-slate-600 font-black py-3 rounded-xl hover:bg-slate-200 transition-colors text-xs tracking-widest">BATAL</button>
+                    <button type="submit" class="flex-1 bg-brand text-white font-black py-3 rounded-xl hover:bg-branddark shadow-lg shadow-brand/30 transition-transform hover:-translate-y-1 text-xs tracking-widest">BUKA TRACKER</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -500,6 +522,15 @@
                 const overlay = document.getElementById('ticketModalOverlay');
                 const card = document.getElementById('ticketModalCard');
                 overlay.classList.add('opacity-0'); card.classList.remove('scale-100'); card.classList.add('scale-95'); setTimeout(() => { overlay.classList.add('hidden'); }, 300);
+            },
+            closeTrackingModal: () => {
+                const overlay = document.getElementById('trackingModalOverlay');
+                const card = document.getElementById('trackingModalCard');
+                overlay.classList.add('opacity-0'); card.classList.remove('scale-100'); card.classList.add('scale-95'); 
+                setTimeout(() => { 
+                    overlay.classList.add('hidden'); 
+                    window.history.replaceState({}, document.title, window.location.pathname); // Bersihkan parameter URL
+                }, 300);
             }
         };
 
@@ -707,8 +738,8 @@
                     <div style="width:40px; height:40px; border-radius:50%; border:1px solid #ccc; display:flex; justify-content:center; align-items:center; overflow:hidden; margin-bottom:5px;">
                         <img src="axalogo.png" style="width:25px; height:25px; object-fit:contain;" onerror="this.style.display='none'">
                     </div>
-                    <h2 style="margin:0; font-size: 16px; font-weight:900;">✔ BERHASIL!</h2>
-                    <p style="margin:2px 0 0 0; font-size:10px; font-weight:bold; color: #555;">SILAKAN CETAK ANTRIAN ANDA</p>
+                    <h2 style="margin:0; font-size: 16px; font-weight:900;">AXA E-KLINIK</h2>
+                    <p style="margin:2px 0 0 0; font-size:10px; font-weight:bold; color: #555;">Klinik Utama</p>
                 </div>
                 
                 <p style="font-size:10px; margin:15px 0 5px 0; font-weight:bold; color: #777;">NOMOR ANTRIAN</p>
@@ -755,6 +786,9 @@
             document.getElementById('workArea').innerHTML = ''; 
             document.getElementById('liveTrackingCard')?.classList.add('hidden');
             if(window.trackingInterval) clearInterval(window.trackingInterval);
+            
+            // Clear URL
+            window.history.replaceState({}, document.title, window.location.pathname); 
         }
         
         function logoutPasien() { 
@@ -763,6 +797,9 @@
             document.getElementById('formPasien').reset();
             document.getElementById('liveTrackingCard')?.classList.add('hidden');
             if(window.trackingInterval) clearInterval(window.trackingInterval);
+            
+            // Clear URL
+            window.history.replaceState({}, document.title, window.location.pathname); 
         }
 
         // --- 4. SPA ROUTER ---
@@ -901,11 +938,11 @@
                             <h3 class="font-black text-slate-800 text-xs tracking-widest uppercase mb-4 text-center">Kontrol Pemanggilan Manual</h3>
                             <div class="bg-white/50 backdrop-blur border border-white p-4 rounded-2xl shadow-sm flex flex-col items-center">
                                 <div class="flex items-center justify-center w-full gap-3 mb-4">
-                                    <button type="button" onclick="changeAntrian('loket', -1)" class="w-12 h-12 bg-white rounded-full font-black text-slate-600 shadow-sm border border-slate-200 hover:bg-slate-50 text-xl shrink-0">-</button>
-                                    <div class="bg-white p-3 rounded-xl shadow-inner border border-slate-100 flex-1 text-center">
+                                    <button type="button" onclick="changeAntrian('loket', -1)" class="shrink-0 w-12 h-12 bg-white text-medblue-600 rounded-full text-2xl font-black hover:bg-medblue-50 shadow-md border border-slate-100 flex items-center justify-center transition-transform active:scale-95">-</button>
+                                    <div class="bg-slate-50 px-4 py-3 rounded-2xl shadow-inner border border-slate-200 flex-1 text-center flex items-center justify-center min-h-[60px]">
                                         <h1 class="text-3xl font-black text-slate-800 tracking-tighter" id="fdDispLoket">A-001</h1>
                                     </div>
-                                    <button type="button" onclick="changeAntrian('loket', 1)" class="w-12 h-12 bg-white rounded-full font-black text-slate-600 shadow-sm border border-slate-200 hover:bg-slate-50 text-xl shrink-0">+</button>
+                                    <button type="button" onclick="changeAntrian('loket', 1)" class="shrink-0 w-12 h-12 bg-white text-medblue-600 rounded-full text-2xl font-black hover:bg-medblue-50 shadow-md border border-slate-100 flex items-center justify-center transition-transform active:scale-95">+</button>
                                 </div>
                                 <button type="button" onclick="panggilAudio(document.getElementById('fdDispLoket').innerText, 'Loket Pendaftaran', document.getElementById('namaLoket')?.innerText)" class="w-full bg-slate-800 text-white py-3.5 rounded-xl font-black shadow-lg hover:bg-slate-900 transition-all active:scale-95 tracking-widest text-xs"><i class="fas fa-volume-up mr-2"></i> PANGGIL LOKET</button>
                             </div>
@@ -969,28 +1006,32 @@
 
         function buildAntrian(container) {
             container.innerHTML = `
-                <div class="h-full flex flex-col glass-card rounded-[2rem] overflow-y-auto custom-scrollbar relative">
-                    <div class="bg-gradient-to-r from-brand to-branddark p-5 md:p-8 text-white flex flex-col md:flex-row items-center gap-4 md:gap-6 shadow-md z-10 relative border-b-4 border-blue-400 shrink-0">
-                        <div class="w-16 h-16 md:w-20 md:h-20 bg-white/20 backdrop-blur-md rounded-[1.25rem] flex items-center justify-center shadow-inner border border-white/30 overflow-hidden shrink-0">
-                            <img src="axalogo.png" alt="Logo" class="w-full h-full object-contain p-2" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                            <i class="fas fa-clinic-medical text-white text-3xl hidden"></i>
-                        </div>
-                        <div class="text-center md:text-left flex-1">
-                            <h1 class="text-2xl md:text-3xl lg:text-4xl font-black uppercase tracking-wider mb-1 drop-shadow-md">DISPLAY ANTRIAN KLINIK</h1>
-                            <p class="font-bold opacity-90 text-xs md:text-sm tracking-widest text-blue-200">Axa E Klinik - Klinik Utama</p>
+                <div class="h-full w-full flex flex-col bg-slate-50 ${AppState.isDisplayMode ? '' : 'rounded-[2rem] glass-card shadow-2xl'} overflow-hidden relative">
+                    <div class="bg-gradient-to-r from-brand to-branddark p-4 md:p-6 text-white flex flex-col md:flex-row items-center justify-between shadow-lg z-20 shrink-0">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 md:w-16 md:h-16 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center shadow-inner border border-white/30 overflow-hidden shrink-0">
+                                <img src="axalogo.png" alt="Logo" class="w-full h-full object-contain p-2" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                <i class="fas fa-clinic-medical text-white text-2xl hidden"></i>
+                            </div>
+                            <div>
+                                <h1 class="text-xl md:text-3xl font-black uppercase tracking-wider mb-1 drop-shadow-md">DISPLAY ANTRIAN KLINIK</h1>
+                                <p class="font-bold opacity-90 text-xs md:text-sm tracking-widest text-blue-200">Axa E Klinik - Klinik Utama</p>
+                            </div>
                         </div>
                         ${AppState.isDisplayMode ? '' : `
                         <div class="flex gap-3 admin-control flex-wrap justify-center mt-4 md:mt-0">
-                            <button type="button" onclick="fetchAntrianRealtime()" class="bg-white/20 hover:bg-white/30 text-white font-bold px-4 py-3 rounded-xl text-xs tracking-widest transition-colors border border-white/30 shadow-sm"><i class="fas fa-sync-alt mr-2"></i> SYNC REALTIME</button>
-                            <a href="/displayantrian" target="_blank" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold px-4 py-3 rounded-xl text-xs tracking-widest transition-colors shadow-sm flex items-center"><i class="fas fa-expand mr-2"></i> BUKA DISPLAY LCD</a>
+                            <button type="button" onclick="fetchAntrianRealtime()" class="bg-white/20 hover:bg-white/30 text-white font-bold px-4 py-2.5 rounded-xl text-xs tracking-widest transition-colors border border-white/30 shadow-sm"><i class="fas fa-sync-alt mr-2"></i> SYNC</button>
+                            <a href="/displayantrian" target="_blank" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold px-4 py-2.5 rounded-xl text-xs tracking-widest transition-colors shadow-sm flex items-center"><i class="fas fa-expand mr-2"></i> BUKA LCD</a>
                         </div>
                         `}
                     </div>
                     
-                    <div class="flex-1 p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 bg-slate-50/50 min-h-0 relative items-stretch content-start" id="antrianCardsContainer">
-                        <!-- Dynamic Cards will be injected here -->
+                    <div class="flex-1 overflow-y-auto p-4 md:p-8 z-10 custom-scrollbar">
+                        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8 items-start" id="antrianCardsContainer">
+                            <!-- Dynamic Cards will be injected here -->
+                        </div>
                     </div>
-                    <div class="bg-slate-900 text-slate-400 p-3 text-center text-[9px] md:text-[10px] font-black tracking-widest uppercase border-t border-slate-800 shrink-0">SELAMAT DATANG DI AXA E KLINIK | MELAYANI DENGAN SEPENUH HATI</div>
+                    <div class="bg-slate-900 text-slate-400 p-3 text-center text-[10px] md:text-xs font-black tracking-widest uppercase border-t border-slate-800 shrink-0 z-20">SELAMAT DATANG DI AXA E KLINIK | MELAYANI DENGAN SEPENUH HATI</div>
                 </div>
             `;
             
@@ -1022,19 +1063,19 @@
             const namaLoket = window.antrianList && window.antrianList.length > 0 ? window.antrianList[Math.min(window.antrianList.length-1, (window.antrianCounters['loket']||1)-1)]?.nama || "Hamba Allah" : "Hamba Allah";
 
             let html = `
-                <div class="glass-card rounded-[2rem] border-t-[12px] md:border-t-[16px] border-medblue-500 shadow-xl flex flex-col relative h-full min-h-[350px]">
-                    <h2 class="text-xl md:text-2xl font-black text-medblue-900 py-4 border-b border-medblue-100 bg-white/60 backdrop-blur-md text-center shrink-0">ANTRIAN LOKET</h2>
-                    <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 relative">
-                        <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-4">
-                            ${AppState.isDisplayMode ? '' : `<button type="button" onclick="changeAntrian('loket', -1)" class="shrink-0 w-10 h-10 md:w-12 md:h-12 bg-white text-medblue-700 rounded-full text-xl md:text-2xl font-black hover:bg-medblue-50 shadow-md border border-slate-100 pb-1">-</button>`}
-                            <div class="bg-white/80 backdrop-blur px-4 py-3 md:px-6 md:py-4 rounded-[1.5rem] shadow-inner border border-white flex-1 text-center flex flex-col items-center justify-center">
+                <div class="glass-card rounded-3xl border-t-[12px] border-medblue-500 shadow-xl flex flex-col bg-white overflow-hidden relative h-full">
+                    <h2 class="text-lg md:text-xl font-black text-medblue-900 py-4 border-b border-slate-100 bg-slate-50/80 text-center shrink-0 tracking-wider">ANTRIAN LOKET</h2>
+                    <div class="flex-1 flex flex-col items-center justify-center p-6 md:p-8">
+                        <div class="flex items-center justify-center w-full gap-3 md:gap-5 mb-6">
+                            ${AppState.isDisplayMode ? '' : `<button type="button" onclick="changeAntrian('loket', -1)" class="shrink-0 w-12 h-12 bg-white text-medblue-600 rounded-full text-2xl font-black hover:bg-medblue-50 shadow-md border border-slate-100 flex items-center justify-center transition-transform active:scale-95">-</button>`}
+                            <div class="bg-slate-50 px-4 py-6 rounded-2xl shadow-inner border border-slate-200 flex-1 text-center flex items-center justify-center min-h-[140px]">
                                 <h1 class="antrian-number font-black text-slate-800 tracking-tighter" id="dispLoket">${loketNum}</h1>
                             </div>
-                            ${AppState.isDisplayMode ? '' : `<button type="button" onclick="changeAntrian('loket', 1)" class="shrink-0 w-10 h-10 md:w-12 md:h-12 bg-white text-medblue-700 rounded-full text-xl md:text-2xl font-black hover:bg-medblue-50 shadow-md border border-slate-100 pb-1">+</button>`}
+                            ${AppState.isDisplayMode ? '' : `<button type="button" onclick="changeAntrian('loket', 1)" class="shrink-0 w-12 h-12 bg-white text-medblue-600 rounded-full text-2xl font-black hover:bg-medblue-50 shadow-md border border-slate-100 flex items-center justify-center transition-transform active:scale-95">+</button>`}
                         </div>
-                        <p class="text-sm md:text-xl font-black text-slate-600 truncate w-full text-center px-2" id="namaLoket">${namaLoket}</p>
+                        <p class="text-base md:text-xl font-black text-slate-700 truncate w-full text-center px-2" id="namaLoket">${namaLoket}</p>
                     </div>
-                    ${AppState.isDisplayMode ? '' : `<button type="button" class="bg-slate-800 text-white p-4 md:p-5 font-black tracking-widest uppercase cursor-pointer hover:bg-medblue-700 transition-colors text-sm md:text-base w-full shrink-0" onclick="panggilAudio(document.getElementById('dispLoket').innerText, 'Loket Pendaftaran', document.getElementById('namaLoket').innerText)"><i class="fas fa-volume-up mr-2"></i> PANGGIL</button>`}
+                    ${AppState.isDisplayMode ? '' : `<button type="button" class="mt-auto shrink-0 bg-slate-800 text-white p-5 font-black tracking-widest uppercase cursor-pointer hover:bg-medblue-700 transition-colors text-sm w-full" onclick="panggilAudio(document.getElementById('dispLoket').innerText, 'Loket Pendaftaran', document.getElementById('namaLoket').innerText)"><i class="fas fa-volume-up mr-2"></i> PANGGIL</button>`}
                 </div>
             `;
 
@@ -1079,21 +1120,21 @@
                 }
 
                 html += `
-                    <div class="glass-card rounded-[2rem] border-t-[12px] md:border-t-[16px] border-${prefixColor}-500 shadow-xl flex flex-col relative group h-full min-h-[350px]">
-                        <div class="absolute inset-0 bg-${prefixColor}-50/40 opacity-50 z-0 pointer-events-none"></div>
-                        <h2 class="text-xl md:text-2xl font-black text-${prefixColor}-800 py-4 border-b border-${prefixColor}-100 bg-white/60 backdrop-blur-md z-10 text-center shrink-0 uppercase">${poli}</h2>
-                        <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 z-10">
-                            <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-4">
-                                ${AppState.isDisplayMode ? '' : `<button type="button" onclick="changeAntrian('${poliId}', -1)" class="shrink-0 w-10 h-10 md:w-12 md:h-12 bg-white text-${prefixColor}-700 rounded-full text-xl md:text-2xl font-black hover:bg-${prefixColor}-50 shadow-md border border-slate-100 pb-1">-</button>`}
-                                <div class="bg-white/80 backdrop-blur px-4 py-3 md:px-6 md:py-4 rounded-[1.5rem] shadow-inner border border-white flex-1 text-center flex flex-col items-center justify-center">
+                    <div class="glass-card rounded-3xl border-t-[12px] border-${prefixColor}-500 shadow-xl flex flex-col bg-white overflow-hidden relative h-full">
+                        <div class="absolute inset-0 bg-${prefixColor}-50/30 opacity-50 z-0 pointer-events-none"></div>
+                        <h2 class="text-lg md:text-xl font-black text-${prefixColor}-800 py-4 border-b border-${prefixColor}-100 bg-${prefixColor}-50/80 z-10 text-center shrink-0 uppercase tracking-wider">${poli}</h2>
+                        <div class="flex-1 flex flex-col items-center justify-center p-6 md:p-8 z-10">
+                            <div class="flex items-center justify-center w-full gap-3 md:gap-5 mb-6">
+                                ${AppState.isDisplayMode ? '' : `<button type="button" onclick="changeAntrian('${poliId}', -1)" class="shrink-0 w-12 h-12 bg-white text-${prefixColor}-600 rounded-full text-2xl font-black hover:bg-${prefixColor}-50 shadow-md border border-slate-100 flex items-center justify-center transition-transform active:scale-95">-</button>`}
+                                <div class="bg-white px-4 py-6 rounded-2xl shadow-inner border border-slate-100 flex-1 text-center flex items-center justify-center min-h-[140px]">
                                     <h1 class="antrian-number font-black text-${prefixColor==='green'?'brand':'yellow-600'} drop-shadow-sm tracking-tighter" id="disp_${safeId}">${poliNum}</h1>
                                 </div>
-                                ${AppState.isDisplayMode ? '' : `<button type="button" onclick="changeAntrian('${poliId}', 1)" class="shrink-0 w-10 h-10 md:w-12 md:h-12 bg-white text-${prefixColor}-700 rounded-full text-xl md:text-2xl font-black hover:bg-${prefixColor}-50 shadow-md border border-slate-100 pb-1">+</button>`}
+                                ${AppState.isDisplayMode ? '' : `<button type="button" onclick="changeAntrian('${poliId}', 1)" class="shrink-0 w-12 h-12 bg-white text-${prefixColor}-600 rounded-full text-2xl font-black hover:bg-${prefixColor}-50 shadow-md border border-slate-100 flex items-center justify-center transition-transform active:scale-95">+</button>`}
                             </div>
-                            <p class="text-sm md:text-xl font-black text-slate-600 truncate w-full text-center px-2" id="nama_${safeId}">${namaPoli}</p>
-                            <p class="text-[10px] md:text-xs font-bold text-${prefixColor}-700 mt-2 bg-white/80 px-4 py-1.5 rounded-xl backdrop-blur-md border border-white shadow-sm inline-block text-center" id="dok_${safeId}">${dokPoli}</p>
+                            <p class="text-base md:text-xl font-black text-slate-700 truncate w-full text-center px-2" id="nama_${safeId}">${namaPoli}</p>
+                            <p class="text-[10px] md:text-xs font-bold text-${prefixColor}-800 mt-3 bg-${prefixColor}-100 px-4 py-1.5 rounded-full border border-${prefixColor}-200 shadow-sm inline-block text-center" id="dok_${safeId}">${dokPoli}</p>
                         </div>
-                        ${AppState.isDisplayMode ? '' : `<button type="button" class="bg-slate-800 text-white p-4 md:p-5 font-black tracking-widest uppercase z-10 cursor-pointer hover:bg-${prefixColor}-600 transition-colors text-sm md:text-base w-full shrink-0 group-hover:shadow-[0_-10px_20px_rgba(32,68,152,0.3)]" onclick="panggilAudio(document.getElementById('disp_${safeId}').innerText, '${poli}', document.getElementById('nama_${safeId}').innerText)"><i class="fas fa-volume-up mr-2"></i> PANGGIL</button>`}
+                        ${AppState.isDisplayMode ? '' : `<button type="button" class="mt-auto shrink-0 bg-slate-800 text-white p-5 font-black tracking-widest uppercase z-10 cursor-pointer hover:bg-${prefixColor}-600 transition-colors text-sm w-full group-hover:shadow-[0_-10px_20px_rgba(32,68,152,0.3)]" onclick="panggilAudio(document.getElementById('disp_${safeId}').innerText, '${poli}', document.getElementById('nama_${safeId}').innerText)"><i class="fas fa-volume-up mr-2"></i> PANGGIL</button>`}
                     </div>
                 `;
             });
@@ -1366,7 +1407,7 @@
                     const pa = document.getElementById('printArea'); pa.innerHTML = `
                         <div style="width:100%; max-width:800px; margin:0 auto; padding:40px; font-family:sans-serif; color:black;">
                             <div style="text-align:center; border-bottom:3px solid #000; padding-bottom:10px; margin-bottom:20px; display:flex; align-items:center;">
-                                <div style="width:80px; height:80px; border:1px solid #000; border-radius:15px; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                                <div style="width:80px; height:80px; border:1px solid #000; border-radius:15px; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:10px; overflow:hidden;">
                                     <img src="axalogo.png" style="width:100%; height:100%; object-fit:contain;" onerror="this.style.display='none'">
                                 </div>
                                 <div style="flex:1;">
