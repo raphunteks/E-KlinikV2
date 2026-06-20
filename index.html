@@ -119,7 +119,7 @@
         <p class="text-brand font-black text-xl animate-pulse tracking-widest" id="loaderText">Sinkronisasi Data...</p>
     </div>
 
-    <!-- CUSTOM GLASSMORPHISM ALERT MODAL (Pengganti window.alert) -->
+    <!-- CUSTOM GLASSMORPHISM ALERT MODAL -->
     <div id="customAlertOverlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[999999] hidden flex items-center justify-center p-4 transition-opacity duration-300 opacity-0">
         <div class="bg-white/90 backdrop-blur-xl border border-white p-6 md:p-8 rounded-[2rem] shadow-2xl max-w-md w-full transform scale-95 transition-transform duration-300" id="customAlertCard">
             <div class="flex items-center gap-4 mb-4 border-b border-slate-200/50 pb-4">
@@ -220,8 +220,8 @@
             <div class="glass-card p-6 md:p-8 rounded-[2rem]">
                 <h3 class="font-black text-brand mb-6 border-b border-slate-200 pb-3 text-xl flex items-center"><i class="fas fa-file-pdf mr-3 text-brand"></i> Unduh Berkas Medis</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <button type="button" class="bg-white/80 border-2 border-white font-black text-slate-700 py-5 px-6 rounded-2xl hover:border-brand hover:text-brand shadow-sm transition-all flex justify-between items-center group" onclick="UI.toast('Fitur Unduh Lab diaktifkan saat produksi')"><span>Hasil Laboratorium</span> <i class="fas fa-download text-slate-300 group-hover:text-brand text-xl"></i></button>
-                    <button type="button" class="bg-white/80 border-2 border-white font-black text-slate-700 py-5 px-6 rounded-2xl hover:border-brand hover:text-brand shadow-sm transition-all flex justify-between items-center group" onclick="UI.toast('Fitur Unduh Surat diaktifkan saat produksi')"><span>Surat Keterangan</span> <i class="fas fa-download text-slate-300 group-hover:text-brand text-xl"></i></button>
+                    <button type="button" class="bg-white/80 border-2 border-white font-black text-slate-700 py-5 px-6 rounded-2xl hover:border-brand hover:text-brand shadow-sm transition-all flex justify-between items-center group" onclick="UI.customAlert('Pemberitahuan', 'Fitur Unduh Hasil Laboratorium (PDF) akan diaktifkan sepenuhnya saat sistem dalam mode produksi akhir.')"><span>Hasil Laboratorium</span> <i class="fas fa-download text-slate-300 group-hover:text-brand text-xl"></i></button>
+                    <button type="button" class="bg-white/80 border-2 border-white font-black text-slate-700 py-5 px-6 rounded-2xl hover:border-brand hover:text-brand shadow-sm transition-all flex justify-between items-center group" onclick="UI.customAlert('Pemberitahuan', 'Fitur Unduh Surat Keterangan Digital (PDF) akan diaktifkan sepenuhnya saat sistem dalam mode produksi akhir.')"><span>Surat Keterangan</span> <i class="fas fa-download text-slate-300 group-hover:text-brand text-xl"></i></button>
                 </div>
             </div>
         </div>
@@ -478,7 +478,11 @@
             const isLama = document.querySelector('input[name="o_status"]:checked').value === 'Lama';
             const rmVal = isLama ? document.getElementById('o_rm').value : 'NEW';
             
-            const p = { nama: document.getElementById('o_nama').value, tglLahir: document.getElementById('o_dob').value, jk: document.getElementById('o_jk').value, nik: document.getElementById('o_nik').value, bpjs: document.getElementById('o_bpjs').value, hp: document.getElementById('o_hp').value, alamat: "Daftar Online", poli: document.getElementById('o_poli').value, dokter: document.getElementById('o_dokter').value, pembiayaan: document.getElementById('o_jaminan').value, keluhan: document.getElementById('o_keluhan').value, noRM: rmVal, tipeDaftar: "Online" };
+            // Generate dropdown dokter berdasarkan staffList jika memungkinkan, 
+            // disini kita asumsikan ID o_dokter sudah terisi manual dari DOM atau bisa di-fetch
+            const dokterName = document.getElementById('o_dokter') ? document.getElementById('o_dokter').value : "Dokter Klinik";
+
+            const p = { nama: document.getElementById('o_nama').value, tglLahir: document.getElementById('o_dob').value, jk: document.getElementById('o_jk').value, nik: document.getElementById('o_nik').value, bpjs: document.getElementById('o_bpjs').value, hp: document.getElementById('o_hp').value, alamat: "Daftar Online", poli: document.getElementById('o_poli').value, dokter: dokterName, pembiayaan: document.getElementById('o_jaminan').value, keluhan: document.getElementById('o_keluhan').value, noRM: rmVal, tipeDaftar: "Online" };
             try {
                 const res = await ZettBackend.call('savePendaftaran', p); UI.loader(false); 
                 if(res && res.status==='success') { 
@@ -715,10 +719,10 @@
                         <div class="glass-card rounded-[2rem] border-t-[12px] border-medblue-500 shadow-xl flex flex-col relative">
                             <h2 class="text-xl md:text-2xl font-black text-medblue-900 py-4 border-b border-medblue-100 bg-white/60 backdrop-blur-md text-center shrink-0">ANTRIAN LOKET</h2>
                             <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 relative min-h-[200px]">
-                                <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-6">
+                                <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-4">
                                     <button type="button" onclick="changeAntrian('loket', -1)" class="admin-control w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-medblue-700 rounded-full text-xl md:text-2xl font-black hover:bg-medblue-50 transition-colors shadow-md border border-slate-100">-</button>
-                                    <div class="bg-white/80 backdrop-blur px-4 py-4 md:py-6 rounded-[1.5rem] shadow-inner border border-white flex-1 text-center flex items-center justify-center">
-                                        <h1 class="text-5xl sm:text-6xl md:text-7xl xl:text-[90px] font-black text-slate-800 leading-none tracking-tighter" id="dispLoket">A-001</h1>
+                                    <div class="bg-white/80 backdrop-blur px-4 py-3 md:px-6 md:py-4 rounded-[1.5rem] shadow-inner border border-white flex-1 max-w-[200px] md:max-w-[250px] text-center flex flex-col items-center justify-center">
+                                        <h1 class="text-5xl md:text-7xl xl:text-[90px] font-black text-slate-800 leading-none tracking-tighter" id="dispLoket">A-001</h1>
                                     </div>
                                     <button type="button" onclick="changeAntrian('loket', 1)" class="admin-control w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-medblue-700 rounded-full text-xl md:text-2xl font-black hover:bg-medblue-50 transition-colors shadow-md border border-slate-100">+</button>
                                 </div>
@@ -732,10 +736,10 @@
                             <div class="absolute inset-0 bg-green-50/40 opacity-50 z-0 pointer-events-none"></div>
                             <h2 class="text-xl md:text-2xl font-black text-green-800 py-4 border-b border-green-100 bg-white/60 backdrop-blur-md z-10 text-center shrink-0">POLI UMUM</h2>
                             <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 z-10 min-h-[200px]">
-                                <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-6">
+                                <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-4">
                                     <button type="button" onclick="changeAntrian('poliUmum', -1)" class="admin-control w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-green-700 rounded-full text-xl md:text-2xl font-black hover:bg-green-50 transition-colors shadow-md border border-slate-100">-</button>
-                                    <div class="bg-white/80 backdrop-blur px-4 py-4 md:py-6 rounded-[1.5rem] shadow-inner border border-white flex-1 text-center flex items-center justify-center">
-                                        <h1 class="text-5xl sm:text-6xl md:text-7xl xl:text-[90px] font-black text-brand leading-none drop-shadow-sm tracking-tighter" id="dispPoliUmum">B-001</h1>
+                                    <div class="bg-white/80 backdrop-blur px-4 py-3 md:px-6 md:py-4 rounded-[1.5rem] shadow-inner border border-white flex-1 max-w-[200px] md:max-w-[250px] text-center flex flex-col items-center justify-center">
+                                        <h1 class="text-5xl md:text-7xl xl:text-[90px] font-black text-brand leading-none drop-shadow-sm tracking-tighter" id="dispPoliUmum">B-001</h1>
                                     </div>
                                     <button type="button" onclick="changeAntrian('poliUmum', 1)" class="admin-control w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-green-700 rounded-full text-xl md:text-2xl font-black hover:bg-green-50 transition-colors shadow-md border border-slate-100">+</button>
                                 </div>
@@ -750,10 +754,10 @@
                             <div class="absolute inset-0 bg-yellow-50/40 opacity-50 z-0 pointer-events-none"></div>
                             <h2 class="text-xl md:text-2xl font-black text-yellow-800 py-4 border-b border-yellow-100 bg-white/60 backdrop-blur-md z-10 text-center shrink-0">POLI GIGI</h2>
                             <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 z-10 min-h-[200px]">
-                                <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-6">
+                                <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-4">
                                     <button type="button" onclick="changeAntrian('poliGigi', -1)" class="admin-control w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-yellow-700 rounded-full text-xl md:text-2xl font-black hover:bg-yellow-50 transition-colors shadow-md border border-slate-100">-</button>
-                                    <div class="bg-white/80 backdrop-blur px-4 py-4 md:py-6 rounded-[1.5rem] shadow-inner border border-white flex-1 text-center flex items-center justify-center">
-                                        <h1 class="text-5xl sm:text-6xl md:text-7xl xl:text-[90px] font-black text-yellow-600 leading-none drop-shadow-sm tracking-tighter" id="dispPoliGigi">C-001</h1>
+                                    <div class="bg-white/80 backdrop-blur px-4 py-3 md:px-6 md:py-4 rounded-[1.5rem] shadow-inner border border-white flex-1 max-w-[200px] md:max-w-[250px] text-center flex flex-col items-center justify-center">
+                                        <h1 class="text-5xl md:text-7xl xl:text-[90px] font-black text-yellow-600 leading-none drop-shadow-sm tracking-tighter" id="dispPoliGigi">C-001</h1>
                                     </div>
                                     <button type="button" onclick="changeAntrian('poliGigi', 1)" class="admin-control w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-yellow-700 rounded-full text-xl md:text-2xl font-black hover:bg-yellow-50 transition-colors shadow-md border border-slate-100">+</button>
                                 </div>
@@ -834,33 +838,45 @@
         };
 
         window.panggilAudio = (nomor, poli, nama = "Hamba Allah") => { 
-            const sfx = new Audio('https://actions.google.com/sounds/v1/alarms/ding_dong_chime.ogg');
+            // SFX Ding Dong Khusus RS (Free API / Web Audio)
+            const sfx = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
             sfx.volume = 1.0;
-            sfx.play().catch(e=>console.log("Audio play error", e));
             
-            sfx.onended = () => {
-                const splitNomor = nomor.split('').map(c => c === '-' ? ' ' : c).join(' ');
-                let text = `Mohon perhatian. Panggilan kepada nomor antrian, ${splitNomor}. `;
-                if(nama && nama !== "Hamba Allah" && nama !== "Nama Pasien") text += `Atas nama, Bapak atau Ibu, ${nama}. `;
-                text += `Dimohon untuk segera menuju ke, ${poli}. Terima kasih.`; 
-                
+            const splitNomor = nomor.split('').map(c => c === '-' ? ' ' : c).join(' ');
+            let text = `Mohon perhatian. Panggilan kepada nomor antrian, ${splitNomor}. `;
+            if(nama && nama !== "Hamba Allah" && nama !== "Nama Pasien") text += `Atas nama, Bapak atau Ibu, ${nama}. `;
+            text += `Dimohon untuk segera menuju ke, ${poli}. Terima kasih.`; 
+
+            const speakText = () => {
                 if(window.speechSynthesis.speaking) window.speechSynthesis.cancel();
                 const utterance = new SpeechSynthesisUtterance(text); 
                 utterance.lang = 'id-ID'; 
-                utterance.rate = 0.75; 
-                utterance.pitch = 1.15; 
+                utterance.rate = 0.82; 
+                utterance.pitch = 1.1; 
                 
                 let voices = window.speechSynthesis.getVoices();
-                const playSound = () => {
+                const applyVoice = () => {
                     voices = window.speechSynthesis.getVoices();
                     const idVoice = voices.find(v => (v.lang.includes('id') || v.lang.includes('ID') || v.name.includes('Indonesian')) && v.name.includes('Female'));
                     if(idVoice) utterance.voice = idVoice;
+                    else {
+                        const backupVoice = voices.find(v => v.lang.includes('id') || v.lang.includes('ID'));
+                        if(backupVoice) utterance.voice = backupVoice;
+                    }
                     window.speechSynthesis.speak(utterance);
                 };
 
-                if(voices.length === 0) window.speechSynthesis.addEventListener('voiceschanged', playSound, {once: true});
-                else playSound();
+                if(voices.length === 0) window.speechSynthesis.addEventListener('voiceschanged', applyVoice, {once: true});
+                else applyVoice();
             };
+
+            sfx.play().then(() => {
+                sfx.onended = speakText;
+            }).catch(e => {
+                console.log("SFX Blocked or Error. Fallback to TTS only.");
+                speakText();
+            });
+            
             UI.toast('Memanggil antrian ' + nomor);
         };
 
@@ -1043,7 +1059,7 @@
         };
         function cetakStrukKasir(p, t) {
             const pa = document.getElementById('printArea');
-            pa.innerHTML = `<div style="width: 80mm; padding: 5mm; font-family: monospace; font-size:12px; margin: 0 auto;"><div style="text-align: center;"><h2 style="margin:0; font-size: 20px;">AXA E KLINIK</h2><p style="margin:5px 0;">NOTA PEMBAYARAN RESMI</p></div><hr style="border-top:1px dashed #000; margin: 10px 0;"><p style="margin:2px 0;">TRX ID : ${p.trxId}</p><p style="margin:2px 0;">WAKTU  : ${new Date().toLocaleString('id-ID')}</p><p style="margin:2px 0;">KASIR  : ${AppState.user?.name || 'Kasir'}</p><hr style="border-top:1px dashed #000; margin: 10px 0;"><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>TOTAL TAGIHAN</span> <span style="font-size:14px; font-weight:bold;">Rp ${t.toLocaleString('id-ID')}</span></div><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>BAYAR (${p.metode})</span> <span>Rp ${p.dibayar.toLocaleString('id-ID')}</span></div><hr style="border-top:1px dashed #000; margin: 10px 0;"><div style="display:flex; justify-content:space-between; font-weight:bold; font-size:14px;"><span>KEMBALIAN</span> <span>Rp ${p.kembalian.toLocaleString('id-ID')}</span></div><div style="text-align: center; margin-top:20px; font-size: 10px;"><p>Terima kasih atas kunjungan Anda.<br>Semoga lekas sembuh.</p></div></div>`;
+            pa.innerHTML = `<div style="width: 80mm; padding: 5mm; font-family: monospace; font-size:12px; margin: 0 auto;"><div style="text-align: center;"><h2 style="margin:0; font-size: 20px;">AXA KLINIK</h2><p style="margin:5px 0;">NOTA PEMBAYARAN RESMI</p></div><hr style="border-top:1px dashed #000; margin: 10px 0;"><p style="margin:2px 0;">TRX ID : ${p.trxId}</p><p style="margin:2px 0;">WAKTU  : ${new Date().toLocaleString('id-ID')}</p><p style="margin:2px 0;">KASIR  : ${AppState.user?.name || 'Kasir'}</p><hr style="border-top:1px dashed #000; margin: 10px 0;"><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>TOTAL TAGIHAN</span> <span style="font-size:14px; font-weight:bold;">Rp ${t.toLocaleString('id-ID')}</span></div><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>BAYAR (${p.metode})</span> <span>Rp ${p.dibayar.toLocaleString('id-ID')}</span></div><hr style="border-top:1px dashed #000; margin: 10px 0;"><div style="display:flex; justify-content:space-between; font-weight:bold; font-size:14px;"><span>KEMBALIAN</span> <span>Rp ${p.kembalian.toLocaleString('id-ID')}</span></div><div style="text-align: center; margin-top:20px; font-size: 10px;"><p>Terima kasih atas kunjungan Anda.<br>Semoga lekas sembuh.</p></div></div>`;
             window.print();
         }
 
@@ -1157,15 +1173,16 @@
                         <form onsubmit="submitStaff(event)" id="fStaff" class="space-y-4">
                             <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Nama Lengkap / Gelar *</label><input type="text" id="st_nama" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-bold text-slate-700" required placeholder="Cth: dr. Budi, Sp.A"></div>
                             <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Username *</label><input type="text" id="st_user" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-bold text-slate-700" required></div>
-                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Password *</label><input type="text" id="st_pass" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-bold text-slate-700" required></div>
+                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Password *</label><input type="password" id="st_pass" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-bold text-slate-700" required></div>
                             <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Role / Akses *</label><select id="st_role" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-bold text-slate-700"><option>Dokter</option><option>Frontdesk</option><option>Kasir</option><option>Apoteker</option><option>Analis Lab</option><option>Super Admin</option></select></div>
-                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Poli / Spesialisasi</label><input type="text" id="st_spesialis" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-bold text-slate-700" placeholder="Cth: Spesialis Anak"></div>
+                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Poli Spesifik</label><select id="st_poli" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-bold text-slate-700"><option value="-">- (Non Poli)</option><option value="Poli Umum">Poli Umum</option><option value="Poli Gigi">Poli Gigi</option></select></div>
+                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Jenjang Pendidikan</label><input type="text" id="st_pendidikan" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-bold text-slate-700" placeholder="Cth: Spesialis Anak"></div>
                             <button type="submit" class="w-full bg-brand text-white font-black tracking-widest py-4 rounded-2xl shadow-lg hover:bg-branddark transition-all mt-6"><i class="fas fa-save mr-2"></i> SIMPAN STAFF</button>
                         </form>
                     </div>
                     <div class="lg:col-span-8 glass-card p-6 md:p-8 rounded-[2rem] border-t-8 border-medgreen-500 overflow-y-auto max-h-[85vh] custom-scrollbar">
                         <h3 class="font-black mb-6 text-medgreen-800 text-xl tracking-tight flex items-center"><i class="fas fa-users mr-3"></i> Daftar Staff Aktif</h3>
-                        <div class="overflow-x-auto"><table class="w-full med-table"><thead><tr><th>ID</th><th>Nama Staff</th><th>Role</th><th>Spesialisasi</th><th>Status</th></tr></thead><tbody id="tblStaff"><tr><td colspan="5" class="text-center">Memuat...</td></tr></tbody></table></div>
+                        <div class="overflow-x-auto"><table class="w-full med-table"><thead><tr><th>ID</th><th>Nama Staff & Poli</th><th>Role</th><th>Pendidikan</th><th>Status</th></tr></thead><tbody id="tblStaff"><tr><td colspan="5" class="text-center">Memuat...</td></tr></tbody></table></div>
                     </div>
                 </div>
             `;
@@ -1177,13 +1194,13 @@
                 const res = await ZettBackend.call('getStaffList');
                 if(res && res.status === 'success' && Array.isArray(res.data)) {
                     if(res.data.length === 0) tb.innerHTML = '<tr><td colspan="5" class="text-center p-6 text-slate-400 font-bold">Belum ada staff</td></tr>';
-                    else tb.innerHTML = res.data.map(s => `<tr><td class="font-mono text-xs text-slate-400">${s.id}</td><td class="font-bold text-slate-800">${s.nama} <br><span class="text-[9px] text-brand uppercase">${s.username}</span></td><td><span class="bg-blue-50 text-brand px-2 py-1 rounded text-xs font-bold">${s.role}</span></td><td class="text-xs text-slate-600 font-bold">${s.spesialisasi || '-'}</td><td><span class="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest">${s.status}</span></td></tr>`).join('');
+                    else tb.innerHTML = res.data.map(s => `<tr><td class="font-mono text-xs text-slate-400">${s.id}</td><td class="font-bold text-slate-800">${s.nama} <br><span class="text-[9px] text-brand uppercase">${s.username} | ${s.poli}</span></td><td><span class="bg-blue-50 text-brand px-2 py-1 rounded text-xs font-bold">${s.role}</span></td><td class="text-xs text-slate-600 font-bold">${s.pendidikan || '-'}</td><td><span class="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest">${s.status}</span></td></tr>`).join('');
                 }
             } catch(e) { tb.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 font-bold p-6">Error Fetching Data</td></tr>'; }
         };
         window.submitStaff = async (e) => {
             e.preventDefault(); UI.loader(true, 'Menyimpan Staff...');
-            const p = { nama: document.getElementById('st_nama').value, user: document.getElementById('st_user').value, pass: document.getElementById('st_pass').value, role: document.getElementById('st_role').value, spesialisasi: document.getElementById('st_spesialis').value };
+            const p = { nama: document.getElementById('st_nama').value, user: document.getElementById('st_user').value, pass: document.getElementById('st_pass').value, role: document.getElementById('st_role').value, poli: document.getElementById('st_poli').value, pendidikan: document.getElementById('st_pendidikan').value };
             try { const res = await ZettBackend.call('saveStaff', p); UI.loader(false); if(res && res.status==='success') { UI.toast('Staff ditambahkan!'); document.getElementById('fStaff').reset(); loadStaffList(); } else UI.toast(res?.message, true); } catch(err) { UI.loader(false); }
         };
 
