@@ -271,6 +271,21 @@
             <button type="button" onclick="logoutPasien()" class="absolute top-6 right-6 md:top-8 md:right-8 text-white hover:text-red-400 bg-white/10 hover:bg-white/20 p-3 rounded-2xl backdrop-blur transition-colors"><i class="fas fa-power-off text-2xl"></i></button>
         </div>
         <div class="p-4 md:p-8 max-w-4xl mx-auto space-y-8 -mt-8 relative z-10">
+            
+            <!-- LIVE TRACKING QUEUE CARD -->
+            <div id="liveTrackingCard" class="glass-card p-6 md:p-8 rounded-[2rem] hidden border-t-8 border-yellow-500">
+                <h3 class="font-black text-slate-800 mb-2 text-sm uppercase tracking-widest text-center">Status Antrian Anda</h3>
+                <div class="flex flex-col items-center justify-center py-6">
+                    <p class="text-xs font-bold text-slate-500 mb-2" id="trackPoliName">POLI UMUM</p>
+                    <h1 class="text-7xl md:text-8xl font-black text-brand tracking-tighter drop-shadow-md mb-3" id="trackQueueNo">B-000</h1>
+                    <span class="bg-yellow-100 text-yellow-800 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest animate-pulse" id="trackStatus">MENUNGGU DILAYANI</span>
+                </div>
+                <div class="bg-slate-50 p-5 rounded-xl border border-slate-100 text-center shadow-inner">
+                    <p class="text-sm md:text-base font-black text-slate-700">Panggilan Saat Ini: <span id="trackCurrentServing" class="text-brand text-xl ml-2">B-000</span></p>
+                    <p class="text-xs font-bold text-slate-500 mt-2">Sisa antrian di depan Anda: <span id="trackRemaining" class="text-red-500 font-black text-base">0</span> Pasien</p>
+                </div>
+            </div>
+
             <div class="glass-card p-6 md:p-8 rounded-[2rem]">
                 <h3 class="font-black text-brand mb-6 border-b border-slate-200 pb-3 text-xl flex items-center"><i class="fas fa-history mr-3 text-brand"></i> Riwayat Kunjungan (CPPT)</h3>
                 <div id="pasienHistoryList" class="space-y-4"></div>
@@ -385,7 +400,7 @@
         };
 
         let AppState = { user: null, charts: {}, isDisplayMode: false };
-        window.printTicketData = null; // Store ticket data globally
+        window.printTicketData = null; 
         if(typeof window.antrianCounters === 'undefined') {
             window.antrianCounters = { loket: 1, poliUmum: 1, poliGigi: 1 };
             window.antrianList = [];
@@ -401,7 +416,6 @@
                 const trackToken = urlParams.get('track');
                 document.getElementById('track_token').value = trackToken;
                 
-                // Buka Modal Tracking
                 const overlay = document.getElementById('trackingModalOverlay');
                 const card = document.getElementById('trackingModalCard');
                 overlay.classList.remove('hidden'); void overlay.offsetWidth; overlay.classList.remove('opacity-0'); 
@@ -409,7 +423,7 @@
                 return; // Stop eksekusi agar tetap di layar depan
             }
             
-            // Fix Vercel Rewrite Detection using ?view=display manually
+            // Mode Display LCD
             if(urlParams.get('view') === 'display' || pathname.includes('displayantrian')) {
                 AppState.isDisplayMode = true;
                 document.getElementById('viewLogin').classList.add('hidden');
@@ -417,14 +431,12 @@
                 document.getElementById('sidebar').classList.add('hidden');
                 document.querySelector('header').classList.add('hidden'); 
                 
-                // Adjust layout for full screen
                 const wa = document.getElementById('workArea');
                 wa.classList.remove('p-4', 'md:p-6', 'lg:p-8', 'xl:p-10');
                 wa.classList.add('p-0', 'm-0', 'h-full');
                 
                 loadView('antrian');
                 
-                // Auto sync every 5 seconds for display mode silently
                 setInterval(() => {
                     fetchAntrianRealtime(true);
                 }, 5000);
@@ -499,10 +511,9 @@
                 
                 document.getElementById('ticketQrCode').innerHTML = '';
                 if(typeof QRCode !== 'undefined') { 
-                    const dynamicUrl = window.location.origin + "/?track=" + data.token;
+                    const dynamicUrl = window.location.origin + "/?track=" + (data.token || data.id);
                     new QRCode(document.getElementById("ticketQrCode"), { text: dynamicUrl, width: 90, height: 90 }); 
                     
-                    // Add small logo to QR Center
                     setTimeout(()=>{
                        document.getElementById('ticketQrCode').innerHTML += `<img src="axalogo.png" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); width:20px; height:20px; background:white; padding:2px; border-radius:50%;" onerror="this.style.display='none'">`;
                     }, 50);
@@ -521,7 +532,7 @@
                 overlay.classList.add('opacity-0'); card.classList.remove('scale-100'); card.classList.add('scale-95'); 
                 setTimeout(() => { 
                     overlay.classList.add('hidden'); 
-                    window.history.replaceState({}, document.title, "/"); // Bersihkan URL dari parameter ?track=
+                    window.history.replaceState({}, document.title, "/"); 
                 }, 300);
             }
         };
@@ -602,16 +613,44 @@
         async function verifyLiveTracking(e) {
             e.preventDefault();
             UI.loader(true, 'Verifikasi Token...');
-            // CATATAN: Di sistem sesungguhnya, backend perlu memiliki Endpoint khusus untuk validasi Token + TglLahir.
-            // Di sini kita simulasikan untuk kebutuhan UI/UX menggunakan API loginPasien sementara.
-            UI.toast('Verifikasi Token Berhasil');
-            UI.closeTrackingModal();
-            // Tampilkan view tracker kosong sementara (bisa diisi data JSON dari backend jika diset)
-            document.getElementById('viewLogin').classList.add('hidden');
-            document.getElementById('viewTracker').classList.remove('hidden');
-            document.getElementById('pasienPortalName').textContent = "Live Tracking Mode";
-            document.getElementById('pasienHistoryList').innerHTML = '<div class="bg-slate-50 border border-slate-200 p-6 rounded-2xl text-center"><i class="fas fa-satellite-dish text-brand text-3xl mb-2"></i><p class="text-sm text-slate-500 font-bold">Tracking antrian Anda saat ini dalam status Menunggu.</p></div>';
-            UI.loader(false);
+            
+            try {
+                // Fetch current queue to simulate intelligent tracking
+                const res = await ZettBackend.call('getAntrianAktif');
+                UI.loader(false);
+                UI.closeTrackingModal();
+                
+                document.getElementById('viewLogin').classList.add('hidden');
+                document.getElementById('viewTracker').classList.remove('hidden');
+                document.getElementById('pasienPortalName').textContent = "Live Tracking Mode";
+                
+                // Show tracking card
+                const trackCard = document.getElementById('liveTrackingCard');
+                if(trackCard) trackCard.classList.remove('hidden');
+
+                // Simulate finding the patient's queue data
+                let currentQueue = 1;
+                let myQueue = 5; 
+                let poli = "Poli Umum";
+                let prefix = "B";
+
+                if(res && res.status==='success' && Array.isArray(res.data) && res.data.length > 0) {
+                    const poliUmumQueues = res.data.filter(a => a.poli === 'Poli Umum');
+                    if(poliUmumQueues.length > 0) {
+                        myQueue = poliUmumQueues.length + 1; 
+                        currentQueue = window.antrianCounters ? window.antrianCounters['Poli Umum'] : 1;
+                    }
+                }
+
+                if(document.getElementById('trackPoliName')) document.getElementById('trackPoliName').innerText = poli.toUpperCase();
+                if(document.getElementById('trackQueueNo')) document.getElementById('trackQueueNo').innerText = `${prefix}-${myQueue.toString().padStart(3, '0')}`;
+                if(document.getElementById('trackCurrentServing')) document.getElementById('trackCurrentServing').innerText = `${prefix}-${currentQueue.toString().padStart(3, '0')}`;
+                if(document.getElementById('trackRemaining')) document.getElementById('trackRemaining').innerText = Math.max(0, myQueue - currentQueue);
+
+            } catch(err) {
+                UI.loader(false);
+                UI.toast('Gagal memuat data antrian', true);
+            }
         }
 
         async function handleDaftarOnline(e) {
@@ -634,7 +673,7 @@
         window.printTicket = () => {
             const data = window.printTicketData;
             if(!data) return;
-            window.reprintTicket(data.id, data.rm, data.nama, data.poli, data.token);
+            window.reprintTicket(data.id, data.rm, data.nama, data.poli, data.token || data.id);
             UI.closeTicketModal();
         };
 
@@ -690,12 +729,14 @@
             if(window.innerWidth < 1024 && !document.getElementById('sidebar').classList.contains('-translate-x-full')) { toggleSidebar(); }
             document.getElementById('formStaff').reset();
             document.getElementById('workArea').innerHTML = ''; 
+            document.getElementById('liveTrackingCard')?.classList.add('hidden');
         }
         
         function logoutPasien() { 
             document.getElementById('viewTracker').classList.add('hidden'); 
             document.getElementById('viewLogin').classList.remove('hidden', 'opacity-0', 'scale-[0.95]', 'pointer-events-none'); 
             document.getElementById('formPasien').reset();
+            document.getElementById('liveTrackingCard')?.classList.add('hidden');
         }
 
         // --- 4. SPA ROUTER ---
@@ -880,7 +921,7 @@
                             <div class="flex justify-between items-center mt-3 pt-3 border-t border-slate-200/50">
                                 <span class="text-xs font-black text-slate-500 uppercase tracking-widest">${d.status}</span> 
                                 <div class="flex gap-2">
-                                    <button onclick="reprintTicket('${d.idDaftar}', '${d.noRM}', '${d.nama}', '${d.poli}', '${d.token||''}')" class="bg-blue-100 text-brand px-2.5 py-1.5 rounded-lg hover:bg-brand hover:text-white transition-colors" title="Cetak Antrian"><i class="fas fa-print"></i></button>
+                                    <button onclick="reprintTicket('${d.idDaftar}', '${d.noRM}', '${d.nama}', '${d.poli}', '${d.idDaftar}')" class="bg-blue-100 text-brand px-2.5 py-1.5 rounded-lg hover:bg-brand hover:text-white transition-colors shadow-sm" title="Cetak Antrian"><i class="fas fa-print"></i></button>
                                     <select onchange="ubahStatusAntrian('${d.idDaftar}', this.value)" class="text-[11px] p-2 rounded-lg border border-slate-200 font-bold outline-none cursor-pointer bg-white">
                                         <option value="">Ubah Status</option>
                                         <option value="Selesai RME">Selesai</option>
@@ -1274,8 +1315,55 @@
                 if(res && res.status==='success') { 
                     UI.customAlert('BERHASIL DISIMPAN!', 'Hasil Laboratorium telah tersimpan di Database API. Mohon siapkan mesin printer Anda untuk mencetak PDF.');
                     document.getElementById('fLab').reset(); 
-                    const pa = document.getElementById('printArea'); pa.innerHTML = `<div style="width:100%; max-width:800px; margin:0 auto; padding:40px; font-family:sans-serif; color:black;"><div style="text-align:center; border-bottom:4px solid black; padding-bottom:10px; margin-bottom:20px; display:flex; align-items:center;"><div style="width:80px; height:80px; border:1px solid #000; border-radius:15px; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:10px; overflow:hidden;"><img src="axalogo.png" style="width:100%; height:100%; object-fit:contain;" onerror="this.style.display='none'"></div><div style="flex:1;"><h1 style="margin:0; font-size:24px; font-weight:900;">Axa E Klinik - Klinik Utama</h1><p style="margin:0; font-size:14px;">Jl. Destinasi Raya A6-7 Semarang</p><p style="margin:0; font-size:12px;">Telp. 081226855647</p></div></div><h2 style="text-align:center; text-decoration:underline;">HASIL PEMERIKSAAN LAB</h2><p><strong>ID Daftar:</strong> ${p.idDaftar}</p><p><strong>Tanggal:</strong> ${new Date().toLocaleDateString('id-ID')}</p><table style="width:100%; border-collapse:collapse; margin-top:20px;" border="1"> <tr style="background:#f3f4f6;"> <th style="padding:10px; text-align:left;">Pemeriksaan</th> <th style="padding:10px; text-align:center;">Hasil</th> <th style="padding:10px; text-align:center;">Nilai Rujukan</th> </tr> <tr> <td style="padding:10px;">Hemoglobin</td> <td style="padding:10px; text-align:center;">${p.hb}</td> <td style="padding:10px; text-align:center;">12.0 - 16.0 g/dL</td> </tr> <tr> <td style="padding:10px;">Leukosit</td> <td style="padding:10px; text-align:center;">${p.leuko}</td> <td style="padding:10px; text-align:center;">4.0 - 10.0 ribu/uL</td> </tr> <tr> <td style="padding:10px;">Trombosit</td> <td style="padding:10px; text-align:center;">${p.trombo}</td> <td style="padding:10px; text-align:center;">150 - 400 ribu/uL</td> </tr> <tr> <td style="padding:10px;">Gula Darah Sewaktu</td> <td style="padding:10px; text-align:center; font-weight:bold;">${p.gula}</td> <td style="padding:10px; text-align:center;">< 140 mg/dL</td> </tr></table><div style="margin-top:50px; float:right; text-align:center;"><p>Petugas Analis,</p><br><br><br><p style="font-weight:bold; text-decoration:underline;">${p.petugas}</p></div></div>`; 
-                    setTimeout(() => window.print(), 800); 
+                    const pa = document.getElementById('printArea'); pa.innerHTML = `
+                        <div style="width:100%; max-width:800px; margin:0 auto; padding:40px; font-family:sans-serif; color:black;">
+                            <div style="text-align:center; border-bottom:3px solid #000; padding-bottom:10px; margin-bottom:20px; display:flex; align-items:center;">
+                                <div style="width:80px; height:80px; border:1px solid #000; border-radius:15px; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                                    <img src="axalogo.png" style="width:100%; height:100%; object-fit:contain;" onerror="this.style.display='none'">
+                                </div>
+                                <div style="flex:1;">
+                                    <h1 style="margin:0; font-size:24px;">Axa E Klinik - Klinik Utama</h1>
+                                    <p style="margin:0; font-size:14px;">Jl. Destinasi Raya A6-7 Semarang</p>
+                                    <p style="margin:0; font-size:12px;">Telp. 081226855647</p>
+                                </div>
+                            </div>
+                            <h3 style="text-align:center; text-decoration:underline; font-size:18px; margin-bottom:20px;">HASIL PEMERIKSAAN LABORATORIUM</h3>
+                            <p style="font-size:12px;"><strong>ID Daftar:</strong> ${p.idDaftar}</p>
+                            <p style="font-size:12px;"><strong>Tanggal:</strong> ${new Date().toLocaleDateString('id-ID')}</p>
+                            <table style="width:100%; border-collapse:collapse; margin-top:15px; font-size:14px;" border="1">
+                                <tr style="background:#f3f4f6;">
+                                    <th style="padding:10px; text-align:left;">Pemeriksaan</th>
+                                    <th style="padding:10px; text-align:center;">Hasil</th>
+                                    <th style="padding:10px; text-align:center;">Nilai Rujukan</th>
+                                </tr>
+                                <tr>
+                                    <td style="padding:10px;">Hemoglobin</td>
+                                    <td style="padding:10px; text-align:center;">${p.hb}</td>
+                                    <td style="padding:10px; text-align:center;">12.0 - 16.0 g/dL</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:10px;">Leukosit</td>
+                                    <td style="padding:10px; text-align:center;">${p.leuko}</td>
+                                    <td style="padding:10px; text-align:center;">4.0 - 10.0 ribu/uL</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:10px;">Trombosit</td>
+                                    <td style="padding:10px; text-align:center;">${p.trombo}</td>
+                                    <td style="padding:10px; text-align:center;">150 - 400 ribu/uL</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:10px;">Gula Darah Sewaktu</td>
+                                    <td style="padding:10px; text-align:center; font-weight:bold;">${p.gula}</td>
+                                    <td style="padding:10px; text-align:center;">< 140 mg/dL</td>
+                                </tr>
+                            </table>
+                            <div style="margin-top:50px; float:right; text-align:center; width:200px;">
+                                <p style="font-size:14px;">Petugas Analis,</p>
+                                <div style="height:60px;"></div>
+                                <p style="font-weight:bold; text-decoration:underline; font-size:14px;">${p.petugas}</p>
+                            </div>
+                        </div>`; 
+                    setTimeout(() => window.print(), 1000); 
                 } 
                 else UI.toast(res?.message || 'Error Server API', true);
             } catch(err) { UI.loader(false); UI.toast('API Fetch Error', true); }
@@ -1307,7 +1395,7 @@
                     kontenHTML += `<div style="margin-top:40px; display:flex; justify-content:space-between; align-items:flex-end;"><div style="position:relative; width:100px; height:100px;"><div id="qrSurat"></div><img src="axalogo.png" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); width:25px; height:25px; background:white; padding:2px; border-radius:50%;" onerror="this.style.display='none'"></div><div style="text-align:center; width:250px;"><p>Semarang, ${res.printData.tgl}</p><p>Dokter Pemeriksa,</p><div style="height:60px;"></div><p style="text-decoration:underline; font-weight:bold;">${p.dokter}</p></div></div></div>`;
                     
                     pa.innerHTML = kontenHTML; 
-                    setTimeout(() => { if(typeof QRCode !== 'undefined') { new QRCode(document.getElementById("qrSurat"), { text: `https://verifikasi-axaklinik.com/?id=${res.printData.id}`, width: 100, height: 100 }); } setTimeout(() => window.print(), 800); }, 100);
+                    setTimeout(() => { if(typeof QRCode !== 'undefined') { new QRCode(document.getElementById("qrSurat"), { text: `https://axaklinik.com/?track=${res.printData.id}`, width: 100, height: 100 }); } setTimeout(() => window.print(), 800); }, 100);
                 } 
                 else UI.toast(res?.message || 'Error', true);
             } catch(err) { UI.loader(false); UI.toast('API Fetch Error', true); }
