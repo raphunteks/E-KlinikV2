@@ -119,6 +119,20 @@
         <p class="text-brand font-black text-xl animate-pulse tracking-widest" id="loaderText">Sinkronisasi Data...</p>
     </div>
 
+    <!-- CUSTOM GLASSMORPHISM ALERT MODAL (Pengganti window.alert) -->
+    <div id="customAlertOverlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[999999] hidden flex items-center justify-center p-4 transition-opacity duration-300 opacity-0">
+        <div class="bg-white/90 backdrop-blur-xl border border-white p-6 md:p-8 rounded-[2rem] shadow-2xl max-w-md w-full transform scale-95 transition-transform duration-300" id="customAlertCard">
+            <div class="flex items-center gap-4 mb-4 border-b border-slate-200/50 pb-4">
+                <div class="w-12 h-12 bg-blue-50 text-brand rounded-2xl flex items-center justify-center text-2xl shadow-inner shrink-0 border border-blue-100">
+                    <i class="fas fa-info-circle"></i>
+                </div>
+                <h3 class="font-black text-slate-800 text-xl tracking-tight" id="customAlertTitle">Informasi Sistem</h3>
+            </div>
+            <p class="text-slate-600 font-bold text-sm leading-relaxed mb-8" id="customAlertMessage">Pesan akan muncul disini...</p>
+            <button type="button" onclick="UI.closeCustomAlert()" class="w-full bg-brand text-white font-black py-4 rounded-xl shadow-lg hover:bg-branddark transition-all transform hover:-translate-y-1 tracking-widest text-sm outline-none">OKE, MENGERTI</button>
+        </div>
+    </div>
+
     <!-- VIEW 1: LOGIN -->
     <div id="viewLogin" class="fixed inset-0 flex items-center justify-center bg-animated z-[50] overflow-y-auto p-4 transition-all duration-700">
         <div class="absolute inset-0 overflow-hidden pointer-events-none z-0">
@@ -205,8 +219,8 @@
             <div class="glass-card p-6 md:p-8 rounded-[2rem]">
                 <h3 class="font-black text-brand mb-6 border-b border-slate-200 pb-3 text-xl flex items-center"><i class="fas fa-file-pdf mr-3 text-brand"></i> Unduh Berkas Medis</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <button type="button" class="bg-white/80 border-2 border-white font-black text-slate-700 py-5 px-6 rounded-2xl hover:border-brand hover:text-brand shadow-sm transition-all flex justify-between items-center group" onclick="UI.toast('Fitur Unduh Lab diaktifkan saat produksi')"><span>Hasil Laboratorium</span> <i class="fas fa-download text-slate-300 group-hover:text-brand text-xl"></i></button>
-                    <button type="button" class="bg-white/80 border-2 border-white font-black text-slate-700 py-5 px-6 rounded-2xl hover:border-brand hover:text-brand shadow-sm transition-all flex justify-between items-center group" onclick="UI.toast('Fitur Unduh Surat diaktifkan saat produksi')"><span>Surat Keterangan</span> <i class="fas fa-download text-slate-300 group-hover:text-brand text-xl"></i></button>
+                    <button type="button" class="bg-white/80 border-2 border-white font-black text-slate-700 py-5 px-6 rounded-2xl hover:border-brand hover:text-brand shadow-sm transition-all flex justify-between items-center group" onclick="UI.customAlert('Pemberitahuan', 'Fitur Unduh Hasil Laboratorium (PDF) akan diaktifkan sepenuhnya saat sistem dalam mode produksi akhir.')"><span>Hasil Laboratorium</span> <i class="fas fa-download text-slate-300 group-hover:text-brand text-xl"></i></button>
+                    <button type="button" class="bg-white/80 border-2 border-white font-black text-slate-700 py-5 px-6 rounded-2xl hover:border-brand hover:text-brand shadow-sm transition-all flex justify-between items-center group" onclick="UI.customAlert('Pemberitahuan', 'Fitur Unduh Surat Keterangan Digital (PDF) akan diaktifkan sepenuhnya saat sistem dalam mode produksi akhir.')"><span>Surat Keterangan</span> <i class="fas fa-download text-slate-300 group-hover:text-brand text-xl"></i></button>
                 </div>
             </div>
         </div>
@@ -278,7 +292,6 @@
         // =========================================================================
         const GAS_URL = "https://script.google.com/macros/s/AKfycbx-KH2mUhhcenjlnxLoMRcsaFl1sQdzS609ebcxFYqToXrWkZBt3kDTx6NNDwmpXi0/exec"; 
 
-        // Tampilkan peringatan jika URL belum diisi saat di Github/Vercel
         if(GAS_URL === "ISI_URL_WEB_APP_ANDA_DISINI") {
             document.getElementById('apiWarning').classList.remove('hidden');
         }
@@ -290,7 +303,6 @@
                     return { status: 'error', message: 'Sistem Terkunci: URL API Google Script belum diatur pada source code index.html.' };
                 }
 
-                // Mapping arguments menjadi object JSON sesuai kebutuhan code.gs
                 let dataPayload = {};
                 if (funcName === 'doLogin') { dataPayload = { username: args[0], password: args[1] }; }
                 else if (funcName === 'loginPasien') { dataPayload = { noRM: args[0], tglLahir: args[1] }; }
@@ -302,16 +314,10 @@
                 try {
                     const response = await fetch(GAS_URL, {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'text/plain;charset=utf-8',
-                        },
-                        body: JSON.stringify({
-                            action: funcName,
-                            data: dataPayload
-                        })
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({ action: funcName, data: dataPayload })
                     });
-                    const result = await response.json();
-                    return result;
+                    return await response.json();
                 } catch (err) {
                     console.error("[Backend Fetch Error]:", err);
                     return { status: 'error', message: 'Koneksi ke Server API terputus atau URL salah.' };
@@ -319,7 +325,13 @@
             }
         };
 
-        let AppState = { user: null, charts: {}, antrian: { loket: 1, poli: 1 } };
+        let AppState = { user: null, charts: {} };
+        
+        // Custom Antrian State (Untuk mencegah override dari API jika belum di-sync manual)
+        if(typeof window.antrianCounters === 'undefined') {
+            window.antrianCounters = { loket: 1, poliUmum: 1, poliGigi: 1 };
+            window.antrianList = [];
+        }
         
         // --- 2. GLOBAL UI HELPER ---
         const UI = {
@@ -327,13 +339,10 @@
                 const el = document.getElementById('globalLoader');
                 const txt = document.getElementById('loaderText');
                 if(show) { 
-                    txt.textContent = text;
-                    el.classList.remove('hidden'); 
-                    void el.offsetWidth; // Force reflow
-                    el.classList.remove('opacity-0'); 
+                    txt.textContent = text; el.classList.remove('hidden'); 
+                    void el.offsetWidth; el.classList.remove('opacity-0'); 
                 } else { 
-                    el.classList.add('opacity-0'); 
-                    setTimeout(() => el.classList.add('hidden'), 300); 
+                    el.classList.add('opacity-0'); setTimeout(() => el.classList.add('hidden'), 300); 
                 }
             },
             toast: (msg, isErr=false) => {
@@ -341,15 +350,27 @@
                 div.className = `fixed top-4 right-4 left-4 md:left-auto md:top-auto md:bottom-8 md:right-8 ${isErr ? 'bg-red-600' : 'bg-slate-800'} text-white px-6 py-4 rounded-2xl shadow-2xl z-[99999] transform transition-all -translate-y-20 md:translate-y-20 opacity-0 font-bold flex items-center gap-4 border ${isErr?'border-red-500':'border-slate-700'}`;
                 div.innerHTML = `<div class="${isErr?'text-red-200':'text-green-400'} text-2xl"><i class="fas ${isErr ? 'fa-times-circle' : 'fa-check-circle'}"></i></div> <div class="flex-1 text-sm md:text-base">${msg}</div>`;
                 document.body.appendChild(div);
-                
-                requestAnimationFrame(() => {
-                    div.classList.remove('-translate-y-20', 'md:translate-y-20', 'opacity-0');
-                });
-                
-                setTimeout(() => { 
-                    div.classList.add('opacity-0', 'scale-90'); 
-                    setTimeout(() => div.remove(), 300); 
-                }, 4000);
+                requestAnimationFrame(() => { div.classList.remove('-translate-y-20', 'md:translate-y-20', 'opacity-0'); });
+                setTimeout(() => { div.classList.add('opacity-0', 'scale-90'); setTimeout(() => div.remove(), 300); }, 4000);
+            },
+            customAlert: (title, msg) => {
+                const overlay = document.getElementById('customAlertOverlay');
+                const card = document.getElementById('customAlertCard');
+                document.getElementById('customAlertTitle').innerHTML = title;
+                document.getElementById('customAlertMessage').innerHTML = msg.replace(/\n/g, '<br>');
+                overlay.classList.remove('hidden');
+                void overlay.offsetWidth;
+                overlay.classList.remove('opacity-0');
+                card.classList.remove('scale-95');
+                card.classList.add('scale-100');
+            },
+            closeCustomAlert: () => {
+                const overlay = document.getElementById('customAlertOverlay');
+                const card = document.getElementById('customAlertCard');
+                overlay.classList.add('opacity-0');
+                card.classList.remove('scale-100');
+                card.classList.add('scale-95');
+                setTimeout(() => { overlay.classList.add('hidden'); }, 300);
             }
         };
 
@@ -357,8 +378,7 @@
             const sb = document.getElementById('sidebar');
             const bd = document.getElementById('sidebarBackdrop');
             sb.classList.toggle('-translate-x-full');
-            if(sb.classList.contains('-translate-x-full')) bd.classList.add('hidden');
-            else bd.classList.remove('hidden');
+            if(sb.classList.contains('-translate-x-full')) bd.classList.add('hidden'); else bd.classList.remove('hidden');
         }
 
         // --- 3. AUTH LOGIC ---
@@ -382,36 +402,22 @@
             UI.loader(true, 'Memeriksa Kredensial Database...');
             try {
                 const res = await ZettBackend.call('doLogin', document.getElementById('username').value, document.getElementById('password').value);
-                
                 if(res && res.status === 'success' && res.user) {
                     AppState.user = res.user;
-                    
                     document.getElementById('viewLogin').classList.add('opacity-0', 'scale-[0.95]', 'pointer-events-none');
                     setTimeout(() => {
                         document.getElementById('viewLogin').classList.add('hidden');
                         document.getElementById('mainApp').classList.remove('hidden');
-                        
                         try {
                             document.getElementById('userName').textContent = res.user.name || 'Staf Medis';
                             document.getElementById('userRole').textContent = res.user.role || 'Akses';
                             document.getElementById('userAvatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(res.user.name || 'U')}&background=ffffff&color=204498&bold=true`;
-                            
-                            renderMenu(); 
-                            loadView(res.user.role === 'Super Admin' ? 'dashboard' : 'frontdesk');
-                        } catch(renderErr) {
-                            console.error(renderErr);
-                            UI.toast('Gagal memuat struktur UI.', true);
-                        }
+                            renderMenu(); loadView(res.user.role === 'Super Admin' ? 'dashboard' : 'frontdesk');
+                        } catch(renderErr) { UI.toast('Gagal memuat struktur UI.', true); }
                         UI.loader(false);
                     }, 500);
-                } else {
-                    UI.loader(false);
-                    UI.toast(res?.message || 'Akses Ditolak. Kredensial Tidak Valid.', true);
-                }
-            } catch (error) {
-                UI.loader(false);
-                UI.toast('API Error: ' + error.message, true);
-            }
+                } else { UI.loader(false); UI.customAlert('Akses Ditolak', res?.message || 'Kredensial Tidak Valid. Pastikan User ID dan Password benar.'); }
+            } catch (error) { UI.loader(false); UI.toast('API Error: ' + error.message, true); }
         }
 
         async function handleLoginPasien(e) {
@@ -419,13 +425,11 @@
             UI.loader(true, 'Mencari Berkas di Database...');
             try {
                 const res = await ZettBackend.call('loginPasien', document.getElementById('p_rm').value, document.getElementById('p_dob').value);
-                
                 if(res && res.status === 'success' && res.pasien) {
                     document.getElementById('viewLogin').classList.add('opacity-0', 'scale-[0.95]', 'pointer-events-none');
                     setTimeout(() => {
                         document.getElementById('viewLogin').classList.add('hidden');
                         document.getElementById('viewTracker').classList.remove('hidden');
-                        
                         try {
                             document.getElementById('pasienPortalName').textContent = (res.pasien.nama || 'Pasien') + ' (' + (res.pasien.rm || '') + ')';
                             const hl = document.getElementById('pasienHistoryList');
@@ -437,14 +441,8 @@
                         } catch(e) { console.error(e); }
                         UI.loader(false);
                     }, 500);
-                } else {
-                    UI.loader(false);
-                    UI.toast(res?.message || 'Data tidak ditemukan di database.', true);
-                }
-            } catch (error) {
-                UI.loader(false);
-                UI.toast('API Error: ' + error.message, true);
-            }
+                } else { UI.loader(false); UI.customAlert('Akses Ditolak', res?.message || 'Data pasien tidak ditemukan dalam sistem kami.'); }
+            } catch (error) { UI.loader(false); UI.toast('API Error: ' + error.message, true); }
         }
 
         async function handleDaftarOnline(e) {
@@ -456,9 +454,10 @@
             try {
                 const res = await ZettBackend.call('savePendaftaran', p); UI.loader(false); 
                 if(res && res.status==='success') { 
-                    UI.toast('Pendaftaran Online Sukses!'); 
                     document.getElementById('formOnline').reset(); 
-                    if(res.printData) alert(`PENDAFTARAN ONLINE BERHASIL!\nToken Lacak: ${res.printData.token}\nNo RM: ${res.printData.rm}\nPoli: ${res.printData.poli}\nSilakan tunjukkan Token ini saat tiba di klinik.`); 
+                    if(res.printData) {
+                        UI.customAlert('REGISTRASI ONLINE BERHASIL!', `<b>Token Lacak: ${res.printData.token}</b><br>No RM: ${res.printData.rm}<br>Poli: ${res.printData.poli}<br><br>Silakan tunjukkan Token ini saat tiba di loket pendaftaran klinik.`);
+                    } 
                 } else UI.toast(res?.message || 'Error', true);
             } catch (err) { UI.loader(false); UI.toast('API Error', true); }
         }
@@ -613,14 +612,14 @@
                         <div class="mt-8 pt-6 border-t border-slate-200/50">
                             <h3 class="font-black text-slate-800 text-xs tracking-widest uppercase mb-4 text-center">Kontrol Pemanggilan Manual</h3>
                             <div class="bg-white/50 backdrop-blur border border-white p-4 rounded-2xl shadow-sm flex flex-col items-center">
-                                <div class="flex items-center justify-center gap-3 mb-4 w-full">
-                                    <button type="button" onclick="changeAntrian('loket', -1)" class="w-12 h-12 bg-white rounded-full font-black text-slate-600 shadow-sm border border-slate-200 hover:bg-slate-50 text-xl">-</button>
+                                <div class="flex items-center justify-center w-full gap-3 mb-4">
+                                    <button type="button" onclick="changeAntrian('loket', -1)" class="w-12 h-12 bg-white rounded-full font-black text-slate-600 shadow-sm border border-slate-200 hover:bg-slate-50 text-xl shrink-0">-</button>
                                     <div class="bg-white p-3 rounded-xl shadow-inner border border-slate-100 flex-1 text-center">
                                         <h1 class="text-3xl font-black text-slate-800 tracking-tighter" id="fdDispLoket">A-001</h1>
                                     </div>
-                                    <button type="button" onclick="changeAntrian('loket', 1)" class="w-12 h-12 bg-white rounded-full font-black text-slate-600 shadow-sm border border-slate-200 hover:bg-slate-50 text-xl">+</button>
+                                    <button type="button" onclick="changeAntrian('loket', 1)" class="w-12 h-12 bg-white rounded-full font-black text-slate-600 shadow-sm border border-slate-200 hover:bg-slate-50 text-xl shrink-0">+</button>
                                 </div>
-                                <button type="button" onclick="panggilAudio(document.getElementById('fdDispLoket').innerText, 'Loket Pendaftaran')" class="w-full bg-slate-800 text-white py-3.5 rounded-xl font-black shadow-lg hover:bg-slate-900 transition-all active:scale-95 tracking-widest text-xs"><i class="fas fa-volume-up mr-2"></i> PANGGIL LOKET</button>
+                                <button type="button" onclick="panggilAudio(document.getElementById('fdDispLoket').innerText, 'Loket Pendaftaran', '-')" class="w-full bg-slate-800 text-white py-3.5 rounded-xl font-black shadow-lg hover:bg-slate-900 transition-all active:scale-95 tracking-widest text-xs"><i class="fas fa-volume-up mr-2"></i> PANGGIL LOKET</button>
                             </div>
                         </div>
                     </div>
@@ -634,7 +633,13 @@
             const p = { nama: document.getElementById('r_nama').value, tglLahir: document.getElementById('r_dob').value, jk: document.getElementById('r_jk').value, nik: document.getElementById('r_nik').value, bpjs: document.getElementById('r_bpjs').value, hp: document.getElementById('r_hp').value, alamat: document.getElementById('r_alamat').value, poli: document.getElementById('r_poli').value, pembiayaan: document.getElementById('r_biaya').value, keluhan: document.getElementById('r_keluhan').value, noRM: 'NEW', tipeDaftar: "On-Site" };
             try {
                 const res = await ZettBackend.call('savePendaftaran', p); UI.loader(false); 
-                if(res && res.status==='success') { UI.toast('Registrasi Sukses!'); document.getElementById('fDaftar').reset(); loadFrontdeskQueue(); if(res.printData) setTimeout(()=>alert(`PASIEN TERDAFTAR!\nNo RM: ${res.printData.rm}\nPoli: ${res.printData.poli}\nSilakan arahkan pasien ke ruang tunggu.`), 500); }
+                if(res && res.status==='success') { 
+                    document.getElementById('fDaftar').reset(); loadFrontdeskQueue(); 
+                    if(res.printData) {
+                        UI.customAlert('REGISTRASI BERHASIL!', `<b>No RM: ${res.printData.rm}</b><br>Poli: ${res.printData.poli}<br>Silakan arahkan pasien ke ruang tunggu.`);
+                        cetakStrukQR(res.printData);
+                    } 
+                }
                 else UI.toast(res?.message || 'Error', true);
             } catch (err) { UI.loader(false); UI.toast('API Error', true); }
         };
@@ -644,7 +649,11 @@
                 const res = await ZettBackend.call('getAntrianAktif');
                 if(res && res.status==='success' && Array.isArray(res.data)) {
                     if(res.data.length === 0) list.innerHTML = '<div class="text-center p-6 border-2 border-dashed border-slate-200 rounded-2xl font-bold text-slate-400">Antrian kosong</div>';
-                    else list.innerHTML = res.data.map(d => `<div class="p-4 border border-white bg-white/50 backdrop-blur rounded-2xl shadow-sm"><div class="flex justify-between items-center mb-2"><span class="font-black text-slate-800 text-base">${d.nama}</span><span class="text-[10px] font-black text-white bg-slate-800 px-2 py-1 rounded tracking-widest">${d.tipe}</span></div><p class="text-[11px] font-mono font-bold text-brand bg-blue-50/50 inline-block px-2 py-1 rounded">${d.idDaftar} | ${d.noRM}</p><div class="flex justify-between items-center mt-3 pt-3 border-t border-slate-200/50"><span class="text-xs font-black text-slate-500 uppercase tracking-widest">${d.status}</span> <select onchange="ubahStatusAntrian('${d.idDaftar}', this.value)" class="text-[11px] p-2 rounded-lg border border-slate-200 font-bold outline-none cursor-pointer bg-white"><option value="">Ubah Status</option><option value="Selesai RME">Selesai</option><option value="Batal">Batal</option></select></div></div>`).join('');
+                    else {
+                        list.innerHTML = res.data.map(d => `<div class="p-4 border border-white bg-white/50 backdrop-blur rounded-2xl shadow-sm"><div class="flex justify-between items-center mb-2"><span class="font-black text-slate-800 text-base">${d.nama}</span><span class="text-[10px] font-black text-white bg-slate-800 px-2 py-1 rounded tracking-widest">${d.tipe}</span></div><p class="text-[11px] font-mono font-bold text-brand bg-blue-50/50 inline-block px-2 py-1 rounded">${d.idDaftar} | ${d.noRM}</p><div class="flex justify-between items-center mt-3 pt-3 border-t border-slate-200/50"><span class="text-xs font-black text-slate-500 uppercase tracking-widest">${d.status}</span> <select onchange="ubahStatusAntrian('${d.idDaftar}', this.value)" class="text-[11px] p-2 rounded-lg border border-slate-200 font-bold outline-none cursor-pointer bg-white"><option value="">Ubah Status</option><option value="Selesai RME">Selesai</option><option value="Batal">Batal</option></select></div></div>`).join('');
+                        window.antrianList = res.data.reverse(); // Store for display antrian name lookup
+                        updateDisplayAntrian(); // update names if display is open
+                    }
                 }
             } catch (e) { list.innerHTML = 'Error fetching queue'; }
         };
@@ -657,91 +666,147 @@
             container.innerHTML = `
                 <div class="h-full flex flex-col glass-card rounded-[2rem] overflow-y-auto custom-scrollbar">
                     <div class="bg-gradient-to-r from-brand to-branddark p-6 md:p-8 text-white flex flex-col md:flex-row items-center gap-6 shadow-md z-10 relative border-b-4 border-blue-400 shrink-0">
-                        <div class="w-20 h-20 bg-white/20 backdrop-blur-md rounded-[1.5rem] flex items-center justify-center shadow-inner border border-white/30 overflow-hidden shrink-0">
+                        <div class="w-16 h-16 md:w-20 md:h-20 bg-white/20 backdrop-blur-md rounded-[1.25rem] flex items-center justify-center shadow-inner border border-white/30 overflow-hidden shrink-0">
                             <img src="axalogo.png" alt="Logo" class="w-full h-full object-contain p-2" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                            <i class="fas fa-clinic-medical text-white text-4xl hidden"></i>
+                            <i class="fas fa-clinic-medical text-white text-3xl hidden"></i>
                         </div>
-                        <div class="text-center md:text-left">
-                            <h1 class="text-3xl md:text-4xl lg:text-5xl font-black uppercase tracking-wider mb-2 drop-shadow-md">DISPLAY ANTRIAN KLINIK</h1>
-                            <p class="font-bold opacity-90 text-sm md:text-lg tracking-widest text-blue-200">Axa E Klinik - Klinik Utama</p>
+                        <div class="text-center md:text-left flex-1">
+                            <h1 class="text-2xl md:text-3xl lg:text-4xl font-black uppercase tracking-wider mb-1 drop-shadow-md">DISPLAY ANTRIAN KLINIK</h1>
+                            <p class="font-bold opacity-90 text-xs md:text-sm tracking-widest text-blue-200">Axa E Klinik - Klinik Utama</p>
                         </div>
+                        <button type="button" onclick="fetchAntrianRealtime()" class="bg-white/20 hover:bg-white/30 text-white font-bold px-4 py-2 rounded-xl text-xs tracking-widest transition-colors border border-white/30"><i class="fas fa-sync-alt mr-2"></i> SYNC REALTIME</button>
                     </div>
-                    <div class="flex-1 p-6 md:p-8 grid grid-cols-1 lg:grid-cols-2 gap-8 bg-slate-50/50 min-h-0">
+                    <div class="flex-1 p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 bg-slate-50/50">
                         
                         <!-- LOKET -->
-                        <div class="glass-card rounded-[2.5rem] border-t-[12px] md:border-t-[16px] border-medblue-500 shadow-xl flex flex-col overflow-hidden relative">
-                            <h2 class="text-2xl md:text-3xl font-black text-medblue-900 py-4 md:py-6 border-b border-medblue-100 bg-white/60 backdrop-blur-md text-center shrink-0">ANTRIAN LOKET</h2>
-                            <div class="flex-1 flex flex-col items-center justify-center p-6 md:p-8 relative min-h-[250px]">
-                                <div class="flex items-center justify-center w-full gap-4 md:gap-8">
-                                    <button type="button" onclick="changeAntrian('loket', -1)" class="w-12 h-12 md:w-16 md:h-16 shrink-0 bg-white text-medblue-700 rounded-full text-2xl md:text-4xl font-black hover:bg-medblue-50 transition-colors shadow-md border border-slate-100 pb-1">-</button>
-                                    <div class="bg-white/80 backdrop-blur px-6 py-4 md:px-8 md:py-6 rounded-[2rem] shadow-inner border border-white flex-1 max-w-[300px] text-center flex items-center justify-center">
-                                        <h1 class="text-6xl sm:text-7xl md:text-8xl xl:text-[110px] font-black text-slate-800 leading-none tracking-tighter" id="dispLoket">A-001</h1>
+                        <div class="glass-card rounded-[2rem] border-t-[12px] border-medblue-500 shadow-xl flex flex-col overflow-hidden relative">
+                            <h2 class="text-xl md:text-2xl font-black text-medblue-900 py-4 border-b border-medblue-100 bg-white/60 backdrop-blur-md text-center shrink-0">ANTRIAN LOKET</h2>
+                            <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 relative">
+                                <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-4">
+                                    <button type="button" onclick="changeAntrian('loket', -1)" class="w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-medblue-700 rounded-full text-xl md:text-2xl font-black hover:bg-medblue-50 transition-colors shadow-md border border-slate-100">-</button>
+                                    <div class="bg-white/80 backdrop-blur px-4 py-3 md:px-6 md:py-4 rounded-[1.5rem] shadow-inner border border-white flex-1 max-w-[200px] md:max-w-[250px] text-center flex flex-col items-center justify-center">
+                                        <h1 class="text-5xl md:text-7xl font-black text-slate-800 leading-none tracking-tighter" id="dispLoket">A-001</h1>
                                     </div>
-                                    <button type="button" onclick="changeAntrian('loket', 1)" class="w-12 h-12 md:w-16 md:h-16 shrink-0 bg-white text-medblue-700 rounded-full text-2xl md:text-4xl font-black hover:bg-medblue-50 transition-colors shadow-md border border-slate-100 pb-1">+</button>
+                                    <button type="button" onclick="changeAntrian('loket', 1)" class="w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-medblue-700 rounded-full text-xl md:text-2xl font-black hover:bg-medblue-50 transition-colors shadow-md border border-slate-100">+</button>
                                 </div>
+                                <p class="text-sm md:text-lg font-black text-slate-600 truncate w-full text-center px-2" id="namaLoket">Hamba Allah</p>
                             </div>
-                            <button type="button" class="bg-slate-800 text-white p-5 md:p-6 font-black tracking-widest uppercase cursor-pointer hover:bg-medblue-700 transition-colors text-base md:text-lg w-full shrink-0" onclick="panggilAudio(document.getElementById('dispLoket').innerText, 'Loket Pendaftaran')"><i class="fas fa-volume-up mr-3"></i> PANGGIL LOKET</button>
+                            <button type="button" class="bg-slate-800 text-white p-4 md:p-5 font-black tracking-widest uppercase cursor-pointer hover:bg-medblue-700 transition-colors text-sm md:text-base w-full shrink-0" onclick="panggilAudio(document.getElementById('dispLoket').innerText, 'Loket Pendaftaran', document.getElementById('namaLoket').innerText)"><i class="fas fa-volume-up mr-2"></i> PANGGIL</button>
                         </div>
 
                         <!-- POLI UMUM -->
-                        <div class="glass-card rounded-[2.5rem] border-t-[12px] md:border-t-[16px] border-green-500 shadow-xl flex flex-col relative overflow-hidden group">
+                        <div class="glass-card rounded-[2rem] border-t-[12px] border-green-500 shadow-xl flex flex-col relative overflow-hidden group">
                             <div class="absolute inset-0 bg-green-50/40 opacity-50 z-0 pointer-events-none"></div>
-                            <h2 class="text-2xl md:text-3xl font-black text-green-800 py-4 md:py-6 border-b border-green-100 bg-white/60 backdrop-blur-md z-10 text-center shrink-0">ANTRIAN POLI UMUM</h2>
-                            <div class="flex-1 flex flex-col items-center justify-center p-6 md:p-8 z-10 min-h-[250px]">
-                                <div class="flex items-center justify-center w-full gap-4 md:gap-8">
-                                    <button type="button" onclick="changeAntrian('poli', -1)" class="w-12 h-12 md:w-16 md:h-16 shrink-0 bg-white text-green-700 rounded-full text-2xl md:text-4xl font-black hover:bg-green-50 transition-colors shadow-md border border-slate-100 pb-1">-</button>
-                                    <div class="bg-white/80 backdrop-blur px-6 py-4 md:px-8 md:py-6 rounded-[2rem] shadow-inner border border-white flex-1 max-w-[300px] text-center flex items-center justify-center">
-                                        <h1 class="text-6xl sm:text-7xl md:text-8xl xl:text-[110px] font-black text-brand leading-none drop-shadow-sm tracking-tighter" id="dispPoli">B-001</h1>
+                            <h2 class="text-xl md:text-2xl font-black text-green-800 py-4 border-b border-green-100 bg-white/60 backdrop-blur-md z-10 text-center shrink-0">POLI UMUM</h2>
+                            <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 z-10">
+                                <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-4">
+                                    <button type="button" onclick="changeAntrian('poliUmum', -1)" class="w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-green-700 rounded-full text-xl md:text-2xl font-black hover:bg-green-50 transition-colors shadow-md border border-slate-100">-</button>
+                                    <div class="bg-white/80 backdrop-blur px-4 py-3 md:px-6 md:py-4 rounded-[1.5rem] shadow-inner border border-white flex-1 max-w-[200px] md:max-w-[250px] text-center flex flex-col items-center justify-center">
+                                        <h1 class="text-5xl md:text-7xl font-black text-brand leading-none drop-shadow-sm tracking-tighter" id="dispPoliUmum">B-001</h1>
                                     </div>
-                                    <button type="button" onclick="changeAntrian('poli', 1)" class="w-12 h-12 md:w-16 md:h-16 shrink-0 bg-white text-green-700 rounded-full text-2xl md:text-4xl font-black hover:bg-green-50 transition-colors shadow-md border border-slate-100 pb-1">+</button>
+                                    <button type="button" onclick="changeAntrian('poliUmum', 1)" class="w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-green-700 rounded-full text-xl md:text-2xl font-black hover:bg-green-50 transition-colors shadow-md border border-slate-100">+</button>
                                 </div>
-                                <p class="text-lg md:text-2xl font-black text-slate-700 mt-6 bg-white/80 px-6 py-2 rounded-2xl backdrop-blur-md border border-white shadow-sm inline-block text-center">dr. Administrator</p>
+                                <p class="text-sm md:text-lg font-black text-slate-600 truncate w-full text-center px-2" id="namaPoliUmum">Hamba Allah</p>
+                                <p class="text-[10px] md:text-xs font-bold text-green-700 mt-2 bg-white/80 px-4 py-1.5 rounded-xl backdrop-blur-md border border-white shadow-sm inline-block text-center">dr. Administrator</p>
                             </div>
-                            <button type="button" class="bg-slate-800 text-white p-5 md:p-6 font-black tracking-widest uppercase z-10 cursor-pointer hover:bg-green-600 transition-colors text-base md:text-lg w-full shrink-0 group-hover:shadow-[0_-10px_20px_rgba(32,68,152,0.3)]" onclick="panggilAudio(document.getElementById('dispPoli').innerText, 'Poli Umum')"><i class="fas fa-volume-up mr-3"></i> PANGGIL POLI</button>
+                            <button type="button" class="bg-slate-800 text-white p-4 md:p-5 font-black tracking-widest uppercase z-10 cursor-pointer hover:bg-green-600 transition-colors text-sm md:text-base w-full shrink-0 group-hover:shadow-[0_-10px_20px_rgba(32,68,152,0.3)]" onclick="panggilAudio(document.getElementById('dispPoliUmum').innerText, 'Poli Umum', document.getElementById('namaPoliUmum').innerText)"><i class="fas fa-volume-up mr-2"></i> PANGGIL</button>
+                        </div>
+
+                        <!-- POLI GIGI -->
+                        <div class="glass-card rounded-[2rem] border-t-[12px] border-yellow-500 shadow-xl flex flex-col relative overflow-hidden group">
+                            <div class="absolute inset-0 bg-yellow-50/40 opacity-50 z-0 pointer-events-none"></div>
+                            <h2 class="text-xl md:text-2xl font-black text-yellow-800 py-4 border-b border-yellow-100 bg-white/60 backdrop-blur-md z-10 text-center shrink-0">POLI GIGI</h2>
+                            <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 z-10">
+                                <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-4">
+                                    <button type="button" onclick="changeAntrian('poliGigi', -1)" class="w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-yellow-700 rounded-full text-xl md:text-2xl font-black hover:bg-yellow-50 transition-colors shadow-md border border-slate-100">-</button>
+                                    <div class="bg-white/80 backdrop-blur px-4 py-3 md:px-6 md:py-4 rounded-[1.5rem] shadow-inner border border-white flex-1 max-w-[200px] md:max-w-[250px] text-center flex flex-col items-center justify-center">
+                                        <h1 class="text-5xl md:text-7xl font-black text-yellow-600 leading-none drop-shadow-sm tracking-tighter" id="dispPoliGigi">C-001</h1>
+                                    </div>
+                                    <button type="button" onclick="changeAntrian('poliGigi', 1)" class="w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-yellow-700 rounded-full text-xl md:text-2xl font-black hover:bg-yellow-50 transition-colors shadow-md border border-slate-100">+</button>
+                                </div>
+                                <p class="text-sm md:text-lg font-black text-slate-600 truncate w-full text-center px-2" id="namaPoliGigi">Hamba Allah</p>
+                                <p class="text-[10px] md:text-xs font-bold text-yellow-700 mt-2 bg-white/80 px-4 py-1.5 rounded-xl backdrop-blur-md border border-white shadow-sm inline-block text-center">drg. Spesialis</p>
+                            </div>
+                            <button type="button" class="bg-slate-800 text-white p-4 md:p-5 font-black tracking-widest uppercase z-10 cursor-pointer hover:bg-yellow-500 transition-colors text-sm md:text-base w-full shrink-0 group-hover:shadow-[0_-10px_20px_rgba(234,179,8,0.3)]" onclick="panggilAudio(document.getElementById('dispPoliGigi').innerText, 'Poli Gigi', document.getElementById('namaPoliGigi').innerText)"><i class="fas fa-volume-up mr-2"></i> PANGGIL</button>
                         </div>
 
                     </div>
-                    <div class="bg-slate-900 text-slate-300 p-4 text-center text-[10px] md:text-xs font-black tracking-widest uppercase border-t border-slate-800 shrink-0">SELAMAT DATANG DI AXA E KLINIK | MELAYANI DENGAN SEPENUH HATI</div>
+                    <div class="bg-slate-900 text-slate-400 p-3 text-center text-[9px] md:text-[10px] font-black tracking-widest uppercase border-t border-slate-800 shrink-0">SELAMAT DATANG DI AXA E KLINIK | MELAYANI DENGAN SEPENUH HATI</div>
                 </div>
             `;
-            if(typeof window.antrianLoketCounter === 'undefined') window.antrianLoketCounter = 1;
-            if(typeof window.antrianPoliCounter === 'undefined') window.antrianPoliCounter = 1;
-            updateDisplayAntrian();
+            
+            if(typeof window.antrianCounters === 'undefined') {
+                window.antrianCounters = { loket: 1, poliUmum: 1, poliGigi: 1 };
+                window.antrianList = [];
+            }
+            fetchAntrianRealtime();
         }
 
         window.changeAntrian = (type, amount) => {
-            if (type === 'loket') window.antrianLoketCounter = Math.max(1, window.antrianLoketCounter + amount);
-            else window.antrianPoliCounter = Math.max(1, window.antrianPoliCounter + amount);
+            window.antrianCounters[type] = Math.max(1, window.antrianCounters[type] + amount);
             updateDisplayAntrian();
         };
 
         window.updateDisplayAntrian = () => {
             const formatNumber = (num, prefix) => `${prefix}-${num.toString().padStart(3, '0')}`;
-            const elLoket = document.getElementById('dispLoket');
-            const elPoli = document.getElementById('dispPoli');
-            const fdLoket = document.getElementById('fdDispLoket');
             
-            if (elLoket) elLoket.innerText = formatNumber(window.antrianLoketCounter, 'A');
-            if (elPoli) elPoli.innerText = formatNumber(window.antrianPoliCounter, 'B');
-            if (fdLoket) fdLoket.innerText = formatNumber(window.antrianLoketCounter, 'A');
+            const loketNum = formatNumber(window.antrianCounters.loket, 'A');
+            const umumNum = formatNumber(window.antrianCounters.poliUmum, 'B');
+            const gigiNum = formatNumber(window.antrianCounters.poliGigi, 'C');
+
+            if (document.getElementById('dispLoket')) document.getElementById('dispLoket').innerText = loketNum;
+            if (document.getElementById('dispPoliUmum')) document.getElementById('dispPoliUmum').innerText = umumNum;
+            if (document.getElementById('dispPoliGigi')) document.getElementById('dispPoliGigi').innerText = gigiNum;
+            
+            if (document.getElementById('fdDispLoket')) document.getElementById('fdDispLoket').innerText = loketNum;
+
+            const findName = (poliFilter, index) => {
+                if(!window.antrianList || window.antrianList.length === 0) return "Hamba Allah";
+                const filtered = window.antrianList.filter(a => poliFilter === 'All' || a.poli === poliFilter);
+                if(filtered.length >= index) return filtered[index-1].nama;
+                return "Hamba Allah";
+            };
+
+            if (document.getElementById('namaLoket')) document.getElementById('namaLoket').innerText = findName('All', window.antrianCounters.loket);
+            if (document.getElementById('namaPoliUmum')) document.getElementById('namaPoliUmum').innerText = findName('Poli Umum', window.antrianCounters.poliUmum);
+            if (document.getElementById('namaPoliGigi')) document.getElementById('namaPoliGigi').innerText = findName('Poli Gigi', window.antrianCounters.poliGigi);
         };
 
-        window.panggilAudio = (nomor, poli) => { 
+        window.fetchAntrianRealtime = async () => {
+            try {
+                UI.loader(true, 'Sinkronisasi Realtime...');
+                const res = await ZettBackend.call('getAntrianAktif');
+                UI.loader(false);
+                if(res && res.status==='success' && Array.isArray(res.data)) {
+                    window.antrianList = res.data.reverse(); 
+                    updateDisplayAntrian();
+                    UI.toast('Data Antrian Tersinkronisasi');
+                }
+            } catch(e) { UI.loader(false); }
+        };
+
+        window.panggilAudio = (nomor, poli, nama = "Hamba Allah") => { 
             const splitNomor = nomor.split('').map(c => c === '-' ? ' ' : c).join(' ');
-            const text = `Nomor antrian, ${splitNomor}, silakan menuju ke, ${poli}.`; 
+            let text = `Ting tong. Panggilan untuk nomor antrian, ${splitNomor}. `;
+            if(nama && nama !== "Hamba Allah" && nama !== "Nama Pasien") text += `Atas nama, ${nama}. `;
+            text += `Silakan menuju ke, ${poli}.`; 
             
             if(window.speechSynthesis.speaking) window.speechSynthesis.cancel();
 
             const utterance = new SpeechSynthesisUtterance(text); 
             utterance.lang = 'id-ID'; 
-            utterance.rate = 0.85;
-            utterance.pitch = 1.0; 
+            utterance.rate = 0.85; 
+            utterance.pitch = 1.1; 
             
             let voices = window.speechSynthesis.getVoices();
             const playSound = () => {
                 voices = window.speechSynthesis.getVoices();
-                const idVoice = voices.find(v => v.lang.includes('id') || v.lang.includes('ID') || v.name.includes('Indonesian'));
+                const idVoice = voices.find(v => (v.lang.includes('id') || v.lang.includes('ID') || v.name.includes('Indonesian')) && v.name.includes('Female'));
                 if(idVoice) utterance.voice = idVoice;
+                else {
+                    const backupVoice = voices.find(v => v.lang.includes('id') || v.lang.includes('ID'));
+                    if(backupVoice) utterance.voice = backupVoice;
+                }
                 window.speechSynthesis.speak(utterance);
             };
 
@@ -950,202 +1015,88 @@
 
         function buildLab(c) { 
             c.innerHTML = `
-            <div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Hasil Pemeriksaan Laboratorium</h2></div>
-            <div class="glass-card p-6 md:p-10 max-w-5xl mx-auto border-t-8 border-purple-600 rounded-[2.5rem]">
-                <form onsubmit="submitLab(event)" id="fLab">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 border-b border-slate-200/50 pb-8">
-                        <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Kode Pendaftaran (REG)</label><input type="text" id="l_id" class="input-med text-lg font-black text-brand bg-white border-2 border-slate-200 focus:border-purple-500 uppercase" required placeholder="REG-XXXX-XXXX"></div>
-                        <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Petugas Analis</label><input type="text" class="input-med font-bold text-slate-500 bg-slate-50 border-transparent" value="${AppState.user?.name||'Analis'}" readonly></div>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
-                        <!-- Hematologi -->
-                        <div class="bg-white/60 backdrop-blur-sm p-6 rounded-[1.5rem] border border-white shadow-sm">
-                            <h4 class="font-black text-white bg-purple-600 p-4 rounded-xl text-center tracking-widest uppercase mb-6 text-sm shadow-md shadow-purple-600/30">HEMATOLOGI RUTIN</h4>
-                            <table class="w-full text-sm">
-                                <thead><tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200"><th class="text-left pb-3 w-1/3">Pemeriksaan</th><th class="text-left pb-3">Hasil</th><th class="text-right pb-3">Nilai Normal</th></tr></thead>
-                                <tbody class="font-bold text-slate-800">
-                                    <tr class="border-b border-slate-100"><td class="py-4">Hemoglobin</td><td class="py-4"><input type="number" step="0.1" id="l_hb" class="w-24 p-2 border-2 border-slate-200 rounded-lg mr-2 focus:border-purple-500 outline-none transition-colors" required> <span class="text-xs text-slate-400">g/dL</span></td><td class="py-4 text-right text-[10px] text-slate-400 leading-tight">Lk: 13-17<br>Pr: 12-15</td></tr>
-                                    <tr class="border-b border-slate-100"><td class="py-4">Leukosit</td><td class="py-4"><input type="number" step="0.1" id="l_leuko" class="w-24 p-2 border-2 border-slate-200 rounded-lg mr-2 focus:border-purple-500 outline-none transition-colors" required> <span class="text-xs text-slate-400">10^3/uL</span></td><td class="py-4 text-right text-[10px] text-slate-400 leading-tight">4.5 - 11</td></tr>
-                                    <tr><td class="py-4">Trombosit</td><td class="py-4"><input type="number" id="l_trombo" class="w-24 p-2 border-2 border-slate-200 rounded-lg mr-2 focus:border-purple-500 outline-none transition-colors" required> <span class="text-xs text-slate-400">10^3/uL</span></td><td class="py-4 text-right text-[10px] text-slate-400 leading-tight">150 - 400</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <!-- Kimia Darah -->
-                        <div class="bg-white/60 backdrop-blur-sm p-6 rounded-[1.5rem] border border-white shadow-sm">
-                            <h4 class="font-black text-white bg-blue-600 p-4 rounded-xl text-center tracking-widest uppercase mb-6 text-sm shadow-md shadow-blue-600/30">KIMIA DARAH</h4>
-                            <table class="w-full text-sm">
-                                <thead><tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200"><th class="text-left pb-3 w-1/3">Pemeriksaan</th><th class="text-left pb-3">Hasil</th><th class="text-right pb-3">Nilai Normal</th></tr></thead>
-                                <tbody class="font-bold text-slate-800">
-                                    <tr class="border-b border-slate-100"><td class="py-4">Gula Puasa</td><td class="py-4"><input type="number" id="l_gula" class="w-24 p-2 border-2 border-yellow-400 bg-yellow-50 rounded-lg mr-2 focus:border-yellow-600 outline-none font-black transition-colors" required> <span class="text-xs text-slate-400">mg/dL</span></td><td class="py-4 text-right text-[10px] text-slate-400 leading-tight">80 - 100</td></tr>
-                                    <tr><td class="py-4">Kolesterol Total</td><td class="py-4"><input type="number" id="l_kol" class="w-24 p-2 border-2 border-slate-200 rounded-lg mr-2 focus:border-blue-500 outline-none transition-colors" required> <span class="text-xs text-slate-400">mg/dL</span></td><td class="py-4 text-right text-[10px] text-slate-400 leading-tight">< 200</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <button type="submit" class="w-full bg-purple-600 text-white font-black tracking-widest py-5 rounded-2xl shadow-xl shadow-purple-600/30 hover:bg-purple-700 transition-transform hover:-translate-y-1 text-lg"><i class="fas fa-print mr-2"></i> SIMPAN & CETAK HASIL LAB</button>
-                </form>
-            </div>`; 
+            <div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Input Hasil Lab API</h2></div><div class="glass-card p-6 md:p-10 rounded-[2rem] max-w-3xl mx-auto border-t-8 border-purple-500 shadow-xl"><form onsubmit="submitLab(event)" id="fLab" class="space-y-6"><div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">ID Pendaftaran</label><input type="text" id="l_id" class="w-full p-4 border-2 border-slate-100 bg-slate-50 rounded-2xl focus:bg-white focus:border-purple-500 outline-none font-bold text-slate-700 transition-colors" placeholder="REG-..." required></div><div class="bg-purple-50 p-6 md:p-8 rounded-[1.5rem] border border-purple-100 shadow-inner"><h4 class="font-black text-purple-900 mb-6 border-b border-purple-200 pb-3 text-lg">Parameter Hematologi</h4><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label class="text-xs font-black text-slate-600 mb-2 block">Hemoglobin (g/dL)</label><input type="number" step="0.1" id="l_hb" class="w-full p-4 border-2 border-transparent rounded-xl bg-white shadow-sm focus:border-purple-300 outline-none font-bold" required></div><div><label class="text-xs font-black text-slate-600 mb-2 block">Leukosit (ribu/uL)</label><input type="number" step="0.1" id="l_leuko" class="w-full p-4 border-2 border-transparent rounded-xl bg-white shadow-sm focus:border-purple-300 outline-none font-bold" required></div><div><label class="text-xs font-black text-slate-600 mb-2 block">Trombosit (ribu/uL)</label><input type="number" id="l_trombo" class="w-full p-4 border-2 border-transparent rounded-xl bg-white shadow-sm focus:border-purple-300 outline-none font-bold" required></div><div><label class="text-xs font-black text-slate-600 mb-2 block">Gula Darah Sewaktu</label><input type="number" id="l_gula" class="w-full p-4 border-2 border-yellow-300 bg-yellow-50 focus:bg-white focus:border-yellow-400 rounded-xl font-black outline-none" required></div></div></div><button type="submit" class="w-full bg-purple-600 text-white font-black tracking-widest py-4 rounded-2xl shadow-lg hover:bg-purple-700 transition-all text-lg transform hover:-translate-y-1"><i class="fas fa-cloud-upload-alt mr-2"></i> POST API & CETAK HASIL</button></form></div>`;
         }
         window.submitLab = async (e) => { 
-            e.preventDefault(); 
-            const payload = { hb: document.getElementById('l_hb').value, leuko: document.getElementById('l_leuko').value, trombo: document.getElementById('l_trombo').value, gula: document.getElementById('l_gula').value, kolesterol: document.getElementById('l_kol').value };
-            const p = { idDaftar: document.getElementById('l_id').value, labData: payload, petugas: AppState.user?.name || 'Analis' }; 
-            UI.loader(true, 'POST API Lab...'); 
-            try { 
+            e.preventDefault(); const p = { idDaftar: document.getElementById('l_id').value, hb: document.getElementById('l_hb').value, leuko: document.getElementById('l_leuko').value, trombo: document.getElementById('l_trombo').value, gula: document.getElementById('l_gula').value, kolesterol: 0, petugas: AppState.user?.name || 'Analis' }; 
+            UI.loader(true, 'POST API Hasil Lab...'); 
+            try {
                 const res = await ZettBackend.call('saveLabResult', p); UI.loader(false); 
                 if(res && res.status==='success') { 
-                    UI.toast(res.message); document.getElementById('fLab').reset(); 
-                    const pa = document.getElementById('printArea'); 
-                    pa.innerHTML = `<div style="width:100%; max-width:800px; margin:0 auto; padding:40px; font-family:sans-serif;"><div style="text-align:center; border-bottom:4px solid #1e40af; padding-bottom:10px; margin-bottom:20px;"><h1 style="color:#1e40af; margin:0; font-size:24px;">KLINIK UTAMA AXA</h1><p style="margin:5px 0 0 0; font-size:12px;">Jl. Destinasi Raya A6-7 - Telp: 08123456</p></div><h2 style="text-align:center; text-decoration:underline;">HASIL PEMERIKSAAN LAB</h2><p><strong>ID Daftar:</strong> ${p.idDaftar}</p><table style="width:100%; border-collapse:collapse; margin-top:20px;" border="1"> <tr style="background:#f3f4f6;"> <th style="padding:10px;">Pemeriksaan</th> <th style="padding:10px;">Hasil</th> <th style="padding:10px;">Nilai Rujukan</th> </tr> <tr> <td style="padding:10px;">Hemoglobin</td> <td style="padding:10px; text-align:center;">${payload.hb} gr/dl</td> <td style="padding:10px; text-align:center;">Lk:13-17 | Pr:12-15</td> </tr> <tr> <td style="padding:10px;">Leukosit</td> <td style="padding:10px; text-align:center;">${payload.leuko} 10^3/ul</td> <td style="padding:10px; text-align:center;">4,5-11</td> </tr> <tr> <td style="padding:10px;">Trombosit</td> <td style="padding:10px; text-align:center;">${payload.trombo} 10^3/ul</td> <td style="padding:10px; text-align:center;">150-400</td> </tr> <tr> <td style="padding:10px;">Gula Darah Puasa</td> <td style="padding:10px; text-align:center; font-weight:bold;">${payload.gula} mg/dl</td> <td style="padding:10px; text-align:center;">80-100</td> </tr><tr> <td style="padding:10px;">Kolesterol Total</td> <td style="padding:10px; text-align:center;">${payload.kolesterol} mg/dl</td> <td style="padding:10px; text-align:center;"><200</td> </tr></table><div style="margin-top:50px; float:right; text-align:center;"><p>Petugas Analis,</p><br><br><br><p style="font-weight:bold; text-decoration:underline;">${p.petugas}</p></div></div>`; 
-                    window.print(); 
+                    UI.customAlert('BERHASIL DISIMPAN!', 'Hasil Laboratorium telah tersimpan di Database API. Mohon siapkan mesin printer Anda untuk mencetak PDF.');
+                    document.getElementById('fLab').reset(); 
+                    const pa = document.getElementById('printArea'); pa.innerHTML = `<div style="width:100%; max-width:800px; margin:0 auto; padding:40px; font-family:sans-serif;"><div style="text-align:center; border-bottom:4px solid #1e40af; padding-bottom:10px; margin-bottom:20px;"><h1 style="color:#1e40af; margin:0; font-size:24px;">KLINIK AXA ENTERPRISE - LABORATORIUM</h1><p style="margin:5px 0 0 0; font-size:12px;">Jl. Raya Medika No. 1 - Izin Dinkes: 442/01/2026</p></div><h2 style="text-align:center; text-decoration:underline;">HASIL PEMERIKSAAN LAB</h2><p><strong>ID Daftar:</strong> ${p.idDaftar}</p><p><strong>Tanggal:</strong> ${new Date().toLocaleDateString('id-ID')}</p><table style="width:100%; border-collapse:collapse; margin-top:20px;" border="1"> <tr style="background:#f3f4f6;"> <th style="padding:10px;">Pemeriksaan</th> <th style="padding:10px;">Hasil</th> <th style="padding:10px;">Nilai Rujukan</th> </tr> <tr> <td style="padding:10px;">Hemoglobin</td> <td style="padding:10px; text-align:center;">${p.hb}</td> <td style="padding:10px; text-align:center;">12.0 - 16.0 g/dL</td> </tr> <tr> <td style="padding:10px;">Leukosit</td> <td style="padding:10px; text-align:center;">${p.leuko}</td> <td style="padding:10px; text-align:center;">4.0 - 10.0 ribu/uL</td> </tr> <tr> <td style="padding:10px;">Trombosit</td> <td style="padding:10px; text-align:center;">${p.trombo}</td> <td style="padding:10px; text-align:center;">150 - 400 ribu/uL</td> </tr> <tr> <td style="padding:10px;">Gula Darah Sewaktu</td> <td style="padding:10px; text-align:center; font-weight:bold;">${p.gula}</td> <td style="padding:10px; text-align:center;">< 140 mg/dL</td> </tr></table><div style="margin-top:50px; float:right; text-align:center;"><p>Petugas Analis,</p><br><br><br><p style="font-weight:bold; text-decoration:underline;">${p.petugas}</p></div></div>`; 
+                    setTimeout(() => window.print(), 1000); 
                 } 
-            } catch(err) { UI.loader(false); } 
+                else UI.toast(res?.message || 'Error Server API', true);
+            } catch(err) { UI.loader(false); UI.toast('API Fetch Error', true); }
         };
-        
-        function buildSurat(c) { 
-            c.innerHTML = `
-            <div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Surat Keterangan & General Consent</h2></div>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div class="glass-card p-6 md:p-10 rounded-[2rem]">
-                    <h3 class="font-black text-brand text-xl border-b border-slate-200/50 pb-4 mb-6 flex items-center"><i class="fas fa-file-alt mr-3"></i> Penerbitan Surat</h3>
-                    <form onsubmit="submitSurat(event)" id="fSurat" class="space-y-5">
-                        <div class="grid grid-cols-2 gap-5">
-                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">No RM Pasien</label><input type="text" id="s_rm" class="input-med uppercase bg-white border-2 border-slate-200 focus:border-brand" required></div>
-                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Jenis Surat</label><select id="s_tipe" class="input-med bg-white border-2 border-slate-200 focus:border-brand cursor-pointer" onchange="toggleFormSurat(this.value)"><option value="Sakit">Suket Sakit</option><option value="Sehat">Suket Sehat</option></select></div>
-                        </div>
-                        
-                        <div id="formSakit" class="bg-blue-50/50 p-6 rounded-[1.5rem] border border-blue-100 space-y-5 shadow-inner">
-                            <div><label class="text-blue-800">Lama Istirahat (Hari)</label><input type="number" id="s_lama" class="input-med border-white" value="2"></div>
-                            <div class="grid grid-cols-2 gap-5"><div><label class="text-blue-800">Dari Tanggal</label><input type="date" id="s_dari" class="input-med border-white"></div><div><label class="text-blue-800">Sampai Tanggal</label><input type="date" id="s_sampai" class="input-med border-white"></div></div>
-                        </div>
 
-                        <div id="formSehat" class="bg-green-50/50 p-6 rounded-[1.5rem] border border-green-100 space-y-5 hidden shadow-inner">
-                            <div><label class="text-green-800">Keperluan</label><input type="text" id="s_keperluan" class="input-med border-white" placeholder="Cth: Daftar PNS"></div>
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div><label class="text-green-800">TB (cm)</label><input type="number" id="s_tb" class="input-med px-3 text-sm border-white"></div>
-                                <div><label class="text-green-800">BB (kg)</label><input type="number" id="s_bb" class="input-med px-3 text-sm border-white"></div>
-                                <div><label class="text-green-800">Tensi</label><input type="text" id="s_tensi" class="input-med px-3 text-sm border-white" placeholder="120/80"></div>
-                                <div><label class="text-green-800">Suhu</label><input type="number" step="0.1" id="s_suhu" class="input-med px-3 text-sm border-white" placeholder="36.5"></div>
-                            </div>
-                        </div>
-
-                        <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Pekerjaan Pasien</label><input type="text" id="s_kerja" class="input-med bg-white border-2 border-slate-200 focus:border-brand" required placeholder="Cth: Karyawan Swasta"></div>
-                        <button type="submit" class="w-full bg-brand text-white font-black py-4 rounded-xl hover:bg-branddark transition-transform hover:-translate-y-1 shadow-lg shadow-brand/30 tracking-widest mt-6 text-lg"><i class="fas fa-print mr-2"></i> CETAK SURAT</button>
-                    </form>
-                </div>
-                
-                <div class="glass-card p-6 md:p-10 rounded-[2rem] border-t-8 border-yellow-500 bg-gradient-to-br from-white/80 to-slate-50/80">
-                    <h3 class="font-black text-slate-800 text-xl border-b border-slate-200/50 pb-4 mb-5 flex items-center"><i class="fas fa-signature text-yellow-500 mr-3"></i> General Consent</h3>
-                    <p class="text-xs mb-6 text-justify font-bold text-slate-500 leading-relaxed bg-white/60 p-4 border border-white rounded-xl shadow-sm">"Dengan menandatangani dokumen ini saya mengakui bahwa pada proses pendaftaran untuk mendapatkan perawatan di Klinik Utama Axa telah mendapat informasi tentang hak dan kewajiban saya sebagai pasien..."</p>
-                    <div class="mb-5"><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">No RM Pasien</label><input type="text" id="ic_rm" class="input-med uppercase font-bold bg-white border-2 border-slate-200" required></div>
-                    <div class="mb-8">
-                        <label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-3 block flex justify-between items-center"><span>Tanda Tangan Digital</span><button type="button" onclick="document.getElementById('signatureCanvas').getContext('2d').clearRect(0,0,400,150)" class="text-[10px] font-black bg-white border border-slate-200 text-slate-500 px-3 py-1.5 rounded shadow-sm hover:text-red-500">BERSIHKAN</button></label>
-                        <div class="border-2 border-slate-200 rounded-2xl bg-white relative p-3 shadow-sm"><canvas id="signatureCanvas" width="400" height="150" class="w-full h-auto cursor-crosshair bg-slate-50 rounded-xl"></canvas></div>
-                    </div>
-                    <button onclick="submitConsent()" class="w-full bg-slate-800 text-white font-black py-4 rounded-xl shadow-lg shadow-slate-800/30 hover:bg-slate-900 transition-transform hover:-translate-y-1 tracking-widest text-lg"><i class="fas fa-save mr-2"></i> SIMPAN LEGITIMASI</button>
-                </div>
-            </div>
-            `; 
-            const tzoffset = (new Date()).getTimezoneOffset() * 60000;
-            const localISOTime = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
-            setTimeout(() => { 
-                if(document.getElementById('s_dari')) document.getElementById('s_dari').value = localISOTime;
-                if(document.getElementById('s_sampai')) document.getElementById('s_sampai').value = localISOTime;
-                
-                const cvs = document.getElementById('signatureCanvas'); if(cvs) { const ctx = cvs.getContext('2d'); ctx.lineWidth = 3; let draw = false; const pos = (e) => { const r = cvs.getBoundingClientRect(); const sX = cvs.width / r.width; const sY = cvs.height / r.height; const x = e.touches ? e.touches[0].clientX : e.clientX; const y = e.touches ? e.touches[0].clientY : e.clientY; return { x: (x - r.left) * sX, y: (y - r.top) * sY }; }; const start = (e) => { e.preventDefault(); draw = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }; const move = (e) => { e.preventDefault(); if(!draw) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); }; cvs.addEventListener('mousedown', start); cvs.addEventListener('mousemove', move); cvs.addEventListener('mouseup', ()=>draw=false); cvs.addEventListener('touchstart', start, {passive:false}); cvs.addEventListener('touchmove', move, {passive:false}); cvs.addEventListener('touchend', ()=>draw=false); } 
-            }, 100);
+        function buildSurat(container) {
+            container.innerHTML = `<div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Penerbitan Surat Medis (API)</h2></div><div class="glass-card p-6 md:p-10 rounded-[2rem] max-w-2xl mx-auto border-t-8 border-brand shadow-xl"><form onsubmit="submitSurat(event)" id="fSurat" class="space-y-6"><div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">No RM Pasien</label><input type="text" id="s_rm" class="w-full p-4 border-2 border-slate-100 bg-slate-50 rounded-2xl uppercase focus:bg-white focus:border-brand outline-none font-bold transition-colors" required></div><div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Jenis Surat</label><select id="s_tipe" class="w-full p-4 border-2 border-slate-100 bg-slate-50 rounded-2xl focus:bg-white focus:border-brand outline-none font-bold cursor-pointer transition-colors"><option value="Sakit">Surat Sakit (Izin Istirahat)</option><option value="Sehat">Surat Keterangan Sehat</option><option value="Rujukan">Surat Rujukan RS</option></select></div><div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Keterangan Detail</label><textarea id="s_ket" class="w-full p-4 border-2 border-slate-100 bg-slate-50 rounded-2xl focus:bg-white focus:border-brand outline-none resize-none font-bold text-slate-700 transition-colors" rows="4" required placeholder="Contoh: Mohon diberikan izin istirahat selama 3 hari karena kondisi medis..."></textarea></div><button type="submit" class="w-full bg-brand text-white font-black tracking-widest py-4 rounded-2xl shadow-lg hover:bg-branddark transition-all transform hover:-translate-y-1 text-lg"><i class="fas fa-cloud-upload-alt mr-2"></i> POST API & CETAK</button></form></div>`;
         }
-
-        window.toggleFormSurat = (val) => {
-            if(val === 'Sakit') { document.getElementById('formSakit').classList.remove('hidden'); document.getElementById('formSehat').classList.add('hidden'); }
-            else { document.getElementById('formSakit').classList.add('hidden'); document.getElementById('formSehat').classList.remove('hidden'); }
-        };
-
         window.submitSurat = async (e) => { 
-            e.preventDefault(); 
-            const tipe = document.getElementById('s_tipe').value;
-            let detail = { kerja: document.getElementById('s_kerja').value };
-            if(tipe === 'Sakit') { detail.lama = document.getElementById('s_lama').value; detail.dari = document.getElementById('s_dari').value; detail.sampai = document.getElementById('s_sampai').value; }
-            else { detail.keperluan = document.getElementById('s_keperluan').value; detail.tb = document.getElementById('s_tb').value; detail.bb = document.getElementById('s_bb').value; detail.tensi = document.getElementById('s_tensi').value; detail.suhu = document.getElementById('s_suhu').value; }
-
-            const p = { noRM: document.getElementById('s_rm').value, tipe: tipe, detail: detail, dokter: AppState.user?.name || 'Dokter' }; 
-            UI.loader(true, 'Menerbitkan API...'); 
-            try { 
+            e.preventDefault(); const p = { noRM: document.getElementById('s_rm').value, tipe: document.getElementById('s_tipe').value, keterangan: document.getElementById('s_ket').value, dokter: AppState.user?.name || 'Dokter' }; 
+            UI.loader(true, 'POST API Surat...'); 
+            try {
                 const res = await ZettBackend.call('saveSuratKet', p); UI.loader(false); 
                 if(res && res.status==='success') { 
-                    UI.toast(res.message); document.getElementById('fSurat').reset(); const pa = document.getElementById('printArea'); 
-                    
-                    let kontenHTML = '';
-                    if(tipe === 'Sakit') {
-                        kontenHTML = `<div style="width:100%; max-width:800px; margin:0 auto; padding:40px; font-family:'Times New Roman', serif; line-height:1.6;"><div style="text-align:center; border-bottom:3px solid #000; padding-bottom:10px; margin-bottom:20px; display:flex; align-items:center;"><div style="width:80px; height:80px; border:1px solid #000; border-radius:15px; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:10px; overflow:hidden;"><img src="axalogo.png" style="width:100%; height:100%; object-fit:contain;" onerror="this.style.display='none'"></div><div style="flex:1;"><h1 style="margin:0; font-size:24px;">Klinik Utama Axa</h1><p style="margin:0; font-size:14px;">Jl. Destinasi Raya A6-7 Semarang</p><p style="margin:0; font-size:12px;">Telp. 081226855647, Email: admin@axaklinik.com</p></div></div><h3 style="text-align:center; text-decoration:underline; font-size:18px;">*** SURAT KETERANGAN SAKIT ***</h3><p style="text-align:center; margin-top:-10px; font-size:12px;">Nomor: ${res.printData.id}</p><p style="margin-top:30px;">Yang bertanda tangan dibawah ini menerangkan bahwa:</p><table style="margin-left:40px; margin-bottom:20px;"><tr><td width="120">Nama</td><td>: PASIEN (${p.noRM})</td></tr><tr><td>Pekerjaan</td><td>: ${detail.kerja}</td></tr></table><p style="text-indent:40px;">Pada pemeriksaan kesehatan yang sudah dilakukan pada hari ini maka dengan ini menyatakan yang bersangkutan dalam kondisi tidak sehat, sehingga perlu beristirahat selama <strong>${detail.lama}</strong> hari, dari tanggal <strong>${detail.dari}</strong> s/d <strong>${detail.sampai}</strong>. Untuk itu saudara dengan nama diatas tidak bisa bekerja / sekolah sebagaimana biasanya.</p><p style="text-indent:40px;">Demikian surat keterangan ini dibuat dan diberikan untuk diketahui dan dipergunakan sebagaimana mestinya.</p><div style="margin-top:60px; float:right; text-align:center; width:250px;"><p>Semarang, ${res.printData.tgl}</p><br><br><br><p style="text-decoration:underline; font-weight:bold;">${p.dokter}</p></div></div>`;
-                    } else {
-                        kontenHTML = `<div style="width:100%; max-width:800px; margin:0 auto; padding:40px; font-family:'Times New Roman', serif; line-height:1.6;"><div style="text-align:center; border-bottom:3px solid #000; padding-bottom:10px; margin-bottom:20px; display:flex; align-items:center;"><div style="width:80px; height:80px; border:1px solid #000; border-radius:15px; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:10px; overflow:hidden;"><img src="axalogo.png" style="width:100%; height:100%; object-fit:contain;" onerror="this.style.display='none'"></div><div style="flex:1;"><h1 style="margin:0; font-size:24px;">Klinik Utama Axa</h1><p style="margin:0; font-size:14px;">Jl. Destinasi Raya A6-7 Semarang</p><p style="margin:0; font-size:12px;">Telp. 081226855647</p></div></div><h3 style="text-align:center; text-decoration:underline; font-size:18px;">*** SURAT KETERANGAN SEHAT ***</h3><p style="text-align:center; margin-top:-10px; font-size:12px;">Nomor: ${res.printData.id}</p><p style="margin-top:30px;">Yang bertanda tangan dibawah ini menerangkan bahwa:</p><table style="margin-left:40px; margin-bottom:20px;"><tr><td width="120">Nama</td><td>: PASIEN (${p.noRM})</td></tr><tr><td>Pekerjaan</td><td>: ${detail.kerja}</td></tr><tr><td>TB / BB</td><td>: ${detail.tb} cm / ${detail.bb} kg</td></tr><tr><td>Tensi / Suhu</td><td>: ${detail.tensi} mmHg / ${detail.suhu} C</td></tr></table><p style="text-indent:40px;">Pada pemeriksaan kesehatan yang sudah dilakukan pada hari ini maka dengan ini menyatakan yang bersangkutan dalam kondisi <strong>SEHAT</strong>. Surat Keterangan ini dibuat untuk <strong>${detail.keperluan}</strong>.</p><div style="margin-top:60px; float:right; text-align:center; width:250px;"><p>Semarang, ${res.printData.tgl}</p><br><br><br><p style="text-decoration:underline; font-weight:bold;">${p.dokter}</p></div></div>`;
-                    }
-                    pa.innerHTML = kontenHTML; window.print(); 
+                    UI.customAlert('SURAT DITERBITKAN!', `ID Dokumen: <b>${res.printData.id}</b> telah tercatat di server. Printer akan otomatis terbuka.`);
+                    document.getElementById('fSurat').reset(); const pa = document.getElementById('printArea'); pa.innerHTML = `<div style="width:100%; max-width:800px; margin:0 auto; padding:40px; font-family:'Times New Roman', serif; line-height:1.6;"><div style="text-align:center; border-bottom:5px double #000; padding-bottom:15px; margin-bottom:30px;"><h1 style="margin:0; font-size:28px; color:#1e40af; text-transform:uppercase;">Klinik Utama Axa Enterprise</h1><p style="margin:0; font-size:14px;">Izin Operasional: 442/123/DINKES/2026</p><p style="margin:0; font-size:12px;">Jl. Raya Medika No. 99, Kota Sehat - Telp (021) 123456</p></div><h3 style="text-align:center; text-decoration:underline; text-transform:uppercase; font-size:18px;">SURAT KETERANGAN ${p.tipe}</h3><p style="text-align:center; margin-top:-10px;">No: ${res.printData.id} / AXA / ${new Date().getFullYear()}</p><p style="margin-top:40px; text-indent:40px;">Yang bertanda tangan di bawah ini menerangkan dengan sesungguhnya bahwa pasien dengan Nomor Rekam Medis: <strong>${p.noRM}</strong>, setelah dilakukan anamnesa dan pemeriksaan fisik dengan teliti, maka:</p><div style="padding:20px; border:1px solid #ddd; background:#fefefe; margin:20px 0; font-style:italic;">${p.keterangan.replace(/\n/g, '<br>')}</div><p style="text-indent:40px;">Demikian surat keterangan ini dibuat agar dapat dipergunakan sebagaimana mestinya oleh pihak yang berkepentingan.</p><div style="margin-top:60px; float:right; text-align:center; width:250px;"><p>Kota Sehat, ${res.printData.tgl}</p><p>Dokter Pemeriksa,</p><div style="height:80px;"></div><p style="text-decoration:underline; font-weight:bold;">${p.dokter}</p></div></div>`; 
+                    setTimeout(() => window.print(), 1000); 
                 } 
-            } catch(err) { UI.loader(false); } 
+                else UI.toast(res?.message || 'Error', true);
+            } catch(err) { UI.loader(false); UI.toast('API Fetch Error', true); }
         };
-        
-        window.submitConsent = async () => { const p = { idDaftar: "MANUAL", noRM: document.getElementById('ic_rm').value || "TIDAK DIISI", base64TTD: document.getElementById('signatureCanvas').toDataURL(), petugas: AppState.user?.name || 'Staff' }; UI.loader(true); try { const res = await ZettBackend.call('saveConsent', p); UI.loader(false); if(res && res.status==='success') { UI.toast(res.message); document.getElementById('signatureCanvas').getContext('2d').clearRect(0,0,400,150); document.getElementById('ic_rm').value=''; } } catch(err) { UI.loader(false); } };
+
+        function buildConsent(container) {
+            container.innerHTML = `<div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Informed Consent API</h2></div><div class="glass-card p-6 md:p-10 rounded-[2rem] max-w-2xl mx-auto shadow-xl"><div class="bg-blue-50 p-5 rounded-2xl mb-8 border border-blue-100 shadow-inner"><p class="text-sm text-blue-900 text-justify font-bold leading-relaxed">"Saya memahami dan menyetujui dilakukannya tindakan medis sesuai dengan Standar Operasional Prosedur (SOP) klinik, setelah mendapat penjelasan komprehensif mengenai risiko dan manfaat dari dokter penanggung jawab."</p></div><div class="mb-6"><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">No RM Pasien / NIK Wali</label><input type="text" id="ic_rm" placeholder="Contoh: RM-2601-0001" class="w-full p-4 border-2 border-slate-100 bg-slate-50 rounded-2xl uppercase outline-none focus:bg-white focus:border-brand font-bold transition-colors"></div><div class="mb-8"><label class="block text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-3">Tanda Tangan Digital (Base64 API)</label><div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm relative group"><canvas id="signatureCanvas" width="500" height="200" class="w-full h-auto bg-slate-50 rounded-xl"></canvas><button type="button" onclick="document.getElementById('signatureCanvas').getContext('2d').clearRect(0,0,500,200)" class="absolute top-5 right-5 bg-white/90 backdrop-blur border border-gray-200 text-slate-500 hover:text-red-500 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-colors"><i class="fas fa-eraser mr-1"></i> Hapus</button></div></div><button onclick="submitConsent()" class="w-full bg-medgreen-600 text-white font-black tracking-widest py-4 rounded-2xl shadow-lg hover:bg-medgreen-700 transition-all transform hover:-translate-y-1 text-lg"><i class="fas fa-cloud-upload-alt mr-2"></i> POST API PERSETUJUAN</button></div>`;
+            const cvs = document.getElementById('signatureCanvas'); const ctx = cvs.getContext('2d'); ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.strokeStyle = '#1e3a8a'; let draw = false;
+            const pos = (e) => { const r = cvs.getBoundingClientRect(); const sX = cvs.width / r.width; const sY = cvs.height / r.height; const x = e.touches ? e.touches[0].clientX : e.clientX; const y = e.touches ? e.touches[0].clientY : e.clientY; return { x: (x - r.left) * sX, y: (y - r.top) * sY }; };
+            const start = (e) => { e.preventDefault(); draw = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }; const move = (e) => { e.preventDefault(); if(!draw) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
+            cvs.addEventListener('mousedown', start); cvs.addEventListener('mousemove', move); cvs.addEventListener('mouseup', ()=>draw=false); cvs.addEventListener('mouseout', ()=>draw=false);
+            cvs.addEventListener('touchstart', start, {passive:false}); cvs.addEventListener('touchmove', move, {passive:false}); cvs.addEventListener('touchend', ()=>draw=false);
+        }
+        window.submitConsent = async () => { 
+            const p = { idDaftar: "MANUAL", noRM: document.getElementById('ic_rm').value || "TIDAK DIISI", base64TTD: document.getElementById('signatureCanvas').toDataURL(), petugas: AppState.user?.name || 'Staff' }; 
+            UI.loader(true, 'POST API Base64...'); 
+            try {
+                const res = await ZettBackend.call('saveConsent', p); UI.loader(false); 
+                if(res && res.status==='success') { UI.customAlert('LEGITIMASI BERHASIL', 'Tanda tangan berhasil di-enkripsi ke Base64 dan tersimpan di Server API.'); document.getElementById('signatureCanvas').getContext('2d').clearRect(0,0,500,200); document.getElementById('ic_rm').value=''; } 
+                else UI.toast(res?.message || 'Error', true);
+            } catch(err) { UI.loader(false); UI.toast('API Error', true); }
+        };
 
         async function buildFarmasi(container) {
             container.innerHTML = `
-                <div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Proses Farmasi (E-Etiket)</h2></div>
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    <div class="lg:col-span-5 glass-card p-6 md:p-8 rounded-[2rem] h-fit max-h-[85vh] overflow-y-auto custom-scrollbar border-t-8 border-brand">
-                        <h3 class="font-black mb-6 text-brand text-lg border-b border-slate-200/50 pb-3 flex items-center"><i class="fas fa-search mr-3 text-xl"></i> Cari Database Obat</h3>
-                        <div class="flex gap-3 mb-6"><input type="text" id="searchObatInput" placeholder="Ketik nama obat..." class="input-med bg-white border-2 border-slate-100 font-bold focus:border-brand transition-colors"><button type="button" onclick="cariObat()" class="bg-brand text-white px-5 rounded-xl shadow-lg hover:bg-branddark transition-colors"><i class="fas fa-search"></i></button></div>
-                        <div id="hasilCariObat" class="space-y-3 text-xs">Memuat...</div>
+                <div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Apotek & Farmasi (API)</h2></div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="glass-card p-6 md:p-8 rounded-[2rem] h-fit max-h-[85vh] overflow-y-auto custom-scrollbar border-t-8 border-brand">
+                        <h3 class="font-black mb-6 text-brand text-xl tracking-tight flex items-center"><i class="fas fa-search mr-3 text-xl"></i> API Search Stok</h3>
+                        <div class="flex gap-3 mb-6"><input type="text" id="searchObatInput" placeholder="Ketik nama obat..." class="flex-1 p-4 border-2 border-slate-100 bg-slate-50 rounded-2xl outline-none focus:bg-white focus:border-brand font-bold transition-colors"><button type="button" onclick="cariObat()" class="bg-brand text-white px-6 rounded-2xl shadow-lg hover:bg-branddark transition-colors"><i class="fas fa-search text-xl"></i></button></div>
+                        <div id="hasilCariObat" class="space-y-3 text-sm max-h-96 overflow-y-auto custom-scrollbar pr-2"></div>
                     </div>
-                    <div class="lg:col-span-7 glass-card p-6 md:p-8 border-t-8 border-medgreen-500 rounded-[2rem] bg-gradient-to-br from-white/80 to-green-50/50 relative">
-                        <h3 class="font-black mb-8 text-medgreen-800 text-xl border-b border-slate-200/50 pb-4 flex items-center"><i class="fas fa-pills mr-3 text-medgreen-600 text-2xl"></i> Form Pemberian Obat (Dispense)</h3>
+                    <div class="glass-card p-6 md:p-8 border-t-8 border-medgreen-500 rounded-[2rem] bg-gradient-to-br from-white/80 to-green-50/50 relative">
+                        <h3 class="font-black mb-6 text-medgreen-800 text-xl tracking-tight flex items-center"><i class="fas fa-hand-holding-medical mr-3 text-medgreen-500"></i> Form Penyerahan (Dispense)</h3>
                         <form onsubmit="submitDispense(event)" class="space-y-6">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Kode Obat Terpilih</label><input type="text" id="f_id" class="input-med bg-slate-100 font-mono font-black text-slate-500 border-transparent" readonly placeholder="Pilih dari kiri"></div>
-                                <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Nama Obat</label><input type="text" id="f_nama" class="input-med bg-slate-100 font-black text-brand border-transparent" readonly placeholder="-"></div>
-                            </div>
-                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Qty Keluar</label><input type="number" id="f_qty" class="input-med bg-white font-black text-xl border-2 border-slate-200 focus:border-medgreen-500 transition-colors" required min="1"></div>
-                            
-                            <div class="bg-white/80 backdrop-blur p-6 rounded-[1.5rem] border border-slate-200 shadow-sm mt-6">
-                                <label class="text-medgreen-800 border-b border-slate-100 pb-3 mb-5 flex items-center font-black text-sm uppercase tracking-widest"><i class="fas fa-edit mr-2"></i> Detail Dosis & Aturan Pakai</label>
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div><label class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Dosis Umum</label><textarea id="f_dosis" class="input-med h-20 resize-none border-2 border-slate-100 focus:border-medgreen-500" placeholder="Cth: Sesudah makan"></textarea></div>
-                                    <div class="col-span-2 grid grid-cols-3 gap-3">
-                                        <div><label class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Pagi</label><input type="text" id="f_pagi" class="input-med font-black text-center border-2 border-slate-100 focus:border-medgreen-500" placeholder="1X1"></div>
-                                        <div><label class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Siang</label><input type="text" id="f_siang" class="input-med font-black text-center border-2 border-slate-100 focus:border-medgreen-500" placeholder="-"></div>
-                                        <div><label class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Sore/Malam</label><input type="text" id="f_sore" class="input-med font-black text-center border-2 border-slate-100 focus:border-medgreen-500" placeholder="1X1"></div>
-                                    </div>
+                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">ID Obat Terpilih</label><input type="text" id="f_id" class="w-full p-4 border border-slate-200 bg-slate-100 rounded-2xl font-mono font-black text-brand outline-none" readonly placeholder="Pilih dari hasil API"></div>
+                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Kuantitas (Qty) Keluar</label><input type="number" id="f_qty" class="w-full p-4 border-2 border-slate-100 bg-white rounded-2xl focus:border-medgreen-500 outline-none font-black text-slate-800 text-lg transition-colors" required min="1"></div>
+                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Aturan Pakai (E-Etiket)</label>
+                                <div class="grid grid-cols-3 gap-4 mt-2">
+                                    <label class="bg-white border-2 border-slate-100 p-4 rounded-2xl text-center cursor-pointer hover:border-medgreen-400 transition-colors font-black text-slate-600 shadow-sm flex flex-col items-center gap-2"><input type="checkbox" id="d_pagi" class="w-5 h-5 accent-medgreen-500"> Pagi</label>
+                                    <label class="bg-white border-2 border-slate-100 p-4 rounded-2xl text-center cursor-pointer hover:border-medgreen-400 transition-colors font-black text-slate-600 shadow-sm flex flex-col items-center gap-2"><input type="checkbox" id="d_siang" class="w-5 h-5 accent-medgreen-500"> Siang</label>
+                                    <label class="bg-white border-2 border-slate-100 p-4 rounded-2xl text-center cursor-pointer hover:border-medgreen-400 transition-colors font-black text-slate-600 shadow-sm flex flex-col items-center gap-2"><input type="checkbox" id="d_sore" class="w-5 h-5 accent-medgreen-500"> Malam</label>
                                 </div>
                             </div>
-                            
-                            <button type="submit" class="w-full bg-medgreen-600 text-white font-black tracking-widest py-5 mt-4 rounded-2xl shadow-xl shadow-medgreen-600/30 hover:bg-medgreen-700 transform hover:-translate-y-1 transition-all text-lg"><i class="fas fa-check-circle mr-2"></i> SIMPAN & SERAHKAN OBAT</button>
+                            <button type="submit" class="w-full bg-medgreen-600 text-white font-black tracking-widest py-4 mt-4 rounded-2xl shadow-lg shadow-medgreen-600/30 hover:bg-medgreen-700 transform hover:-translate-y-1 transition-all text-lg"><i class="fas fa-cloud-upload-alt mr-2"></i> POST API DISPENSE</button>
                         </form>
                     </div>
                 </div>
             `;
             cariObat(); 
         }
-        window.cariObat = async () => { 
-            const kw = document.getElementById('searchObatInput').value; const c = document.getElementById('hasilCariObat'); 
-            c.innerHTML = '<div class="text-center py-8"><i class="fas fa-circle-notch fa-spin text-brand text-4xl"></i></div>'; 
-            try { 
-                const res = await ZettBackend.call('searchObatBackend', kw); 
-                if(res && res.status === 'success') { 
-                    if(!res.data || res.data.length === 0) c.innerHTML = '<div class="bg-red-50 text-red-600 p-4 rounded-xl text-center font-bold border border-red-100">Obat tidak ditemukan.</div>'; 
-                    else c.innerHTML = res.data.map(o => `<div class="p-4 border-2 rounded-2xl flex justify-between items-center transition-all hover:shadow-md ${o.stok <= o.min ? 'bg-red-50/80 border-red-200' : 'bg-white border-slate-100 hover:border-brand'}"><div><p class="font-black text-slate-800 text-lg">${o.nama}</p><p class="text-[10px] text-slate-400 mt-1 font-mono">${o.id} | Exp: ${o.exp}</p><p class="text-xs mt-2 font-bold">Stok: <span class="${o.stok <= o.min ? 'text-red-600 bg-red-100 px-2 py-0.5 rounded-lg':'text-green-600'}">${o.stok}</span></p></div><button type="button" onclick="document.getElementById('f_id').value='${o.id}'; document.getElementById('f_nama').value='${o.nama}';" class="bg-blue-50 border border-blue-100 text-brand hover:bg-brand hover:text-white px-4 py-2 rounded-xl text-xs font-black transition-colors shadow-sm">Pilih</button></div>`).join(''); 
-                } 
-            } catch(err) { c.innerHTML='<div class="text-center p-4 font-bold text-red-500">Error Server</div>'; } 
-        };
-        window.submitDispense = async (e) => { 
-            e.preventDefault(); const idObat = document.getElementById('f_id').value; if(!idObat) return UI.toast('Pilih obat dari tabel kiri!', true); 
-            const p = { idObat: idObat, qty: document.getElementById('f_qty').value, dosisDetail: { dosis: document.getElementById('f_dosis').value, pagi: document.getElementById('f_pagi').value, siang: document.getElementById('f_siang').value, sore: document.getElementById('f_sore').value }, apoteker: AppState.user?.name || 'Apoteker' }; 
-            UI.loader(true, 'POST API Dispense...'); 
-            try { 
-                const res = await ZettBackend.call('dispenseObat', p); UI.loader(false); 
-                if(res && res.status==='success') { UI.toast(res.message); cariObat(); document.getElementById('f_qty').value=''; document.getElementById('f_id').value=''; document.getElementById('f_nama').value=''; document.getElementById('f_dosis').value=''; document.getElementById('f_pagi').value=''; document.getElementById('f_siang').value=''; document.getElementById('f_sore').value='';} 
-                else UI.toast(res?.message || 'Error', true); 
-            } catch(err) { UI.loader(false); UI.toast('Error Dispense', true); } 
-        };
+        window.cariObat = async () => { const kw = document.getElementById('searchObatInput').value; const c = document.getElementById('hasilCariObat'); c.innerHTML = '<div class="text-center p-8"><i class="fas fa-circle-notch fa-spin text-medblue-400 text-3xl"></i></div>'; try { const res = await ZettBackend.call('searchObatBackend', kw); if(res && res.status === 'success') { if(!res.data || res.data.length === 0) c.innerHTML = '<div class="bg-red-50 text-red-600 p-4 rounded-xl text-center font-black border border-red-100">Obat tidak ditemukan di API.</div>'; else c.innerHTML = res.data.map(o => `<div class="p-4 border-2 rounded-2xl flex justify-between items-center transition-all hover:shadow-md ${o.stok <= o.min ? 'bg-red-50/80 border-red-200' : 'bg-white border-slate-100 hover:border-brand'}"><div><p class="font-black text-slate-800 text-lg">${o.nama}</p><p class="text-[10px] text-slate-400 mt-1 font-mono">${o.id} | <span class="bg-slate-100 px-2 py-1 rounded font-bold">${o.kategori}</span></p><p class="text-sm mt-2 font-black">Stok: <span class="${o.stok <= o.min ? 'text-red-600 bg-red-100 px-2 py-0.5 rounded-lg':'text-medgreen-600'}">${o.stok}</span></p></div><button type="button" onclick="document.getElementById('f_id').value='${o.id}'" class="bg-blue-50 text-brand hover:bg-brand hover:text-white px-5 py-3 rounded-xl text-sm font-black transition-colors shadow-sm">Pilih</button></div>`).join(''); } } catch(err) { c.innerHTML='<div class="text-center p-4 font-bold text-red-500">API Server Error</div>'; } };
+        window.submitDispense = async (e) => { e.preventDefault(); const idObat = document.getElementById('f_id').value; if(!idObat) return UI.toast('Pilih obat dari tabel kiri!', true); let dArr = []; if(document.getElementById('d_pagi').checked) dArr.push('Pagi'); if(document.getElementById('d_siang').checked) dArr.push('Siang'); if(document.getElementById('d_sore').checked) dArr.push('Malam'); const p = { idObat: idObat, qty: document.getElementById('f_qty').value, dosis: dArr.length ? dArr.join(', ') : 'Sesuai Anjuran', apoteker: AppState.user?.name || 'Apoteker' }; UI.loader(true, 'POST API Dispense...'); try { const res = await ZettBackend.call('dispenseObat', p); UI.loader(false); if(res && res.status==='success') { UI.customAlert('DISPENSE BERHASIL', 'Stok obat berhasil dikurangi dan dicatat dalam log Farmasi.'); cariObat(); document.getElementById('f_qty').value=''; document.getElementById('f_id').value=''; } else UI.toast(res?.message || 'Error', true); } catch(err) { UI.loader(false); UI.toast('API Fetch Error', true); } };
     </script>
 </body>
 </html>
