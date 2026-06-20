@@ -98,7 +98,7 @@
         @media screen { #printArea { display: none; } }
         @media print { 
             body, html { background: white !important; overflow: visible !important; height: auto !important; margin: 0; padding: 0;}
-            #viewLogin, #mainApp, #viewTracker, #globalLoader, #customAlertOverlay, #ticketModalOverlay { display: none !important; } 
+            #viewLogin, #mainApp, #viewTracker, #globalLoader, #customAlertOverlay, #ticketModalOverlay, #trackingModalOverlay { display: none !important; } 
             #printArea { display: block !important; position: absolute; left: 0; top: 0; width: 100%; padding: 0; margin:0; background: white;} 
         }
         
@@ -135,6 +135,28 @@
             </div>
             <p class="text-slate-600 font-bold text-sm leading-relaxed mb-8" id="customAlertMessage">Pesan akan muncul disini...</p>
             <button type="button" onclick="UI.closeCustomAlert()" class="w-full bg-brand text-white font-black py-4 rounded-xl shadow-lg hover:bg-branddark transition-all transform hover:-translate-y-1 tracking-widest text-sm outline-none">OKE, MENGERTI</button>
+        </div>
+    </div>
+
+    <!-- MODAL LIVE TRACKING (Untuk Pasien via QR) -->
+    <div id="trackingModalOverlay" class="fixed inset-0 bg-slate-900/80 backdrop-blur-xl z-[999999] hidden flex items-center justify-center p-4 transition-opacity duration-300 opacity-0">
+        <div class="bg-white/90 backdrop-blur-xl border border-white p-6 md:p-8 rounded-[2rem] shadow-2xl max-w-md w-full transform scale-95 transition-transform duration-300" id="trackingModalCard">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-brand rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg border border-slate-100 overflow-hidden">
+                    <img src="axalogo.png" alt="Axa Logo" class="w-full h-full object-contain p-2" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                    <i class="fas fa-search text-white text-xl hidden"></i>
+                </div>
+                <h3 class="font-black text-slate-800 text-xl tracking-tight">Verifikasi Live Tracking</h3>
+                <p class="text-xs text-slate-500 font-bold mt-2">Sistem mendeteksi Token Antrian. Masukkan Tgl Lahir Pasien untuk melihat berkas.</p>
+            </div>
+            <form onsubmit="verifyLiveTracking(event)" class="space-y-4">
+                <input type="hidden" id="track_token">
+                <div><label>Tanggal Lahir Pasien * (Abaikan untuk Demo)</label><input type="date" id="track_dob" class="input-med"></div>
+                <div class="flex gap-3 mt-4">
+                    <button type="button" onclick="UI.closeTrackingModal()" class="w-1/3 bg-slate-100 text-slate-600 font-black py-3 rounded-xl hover:bg-slate-200 transition-colors text-xs tracking-widest">BATAL</button>
+                    <button type="submit" class="flex-1 bg-brand text-white font-black py-3 rounded-xl hover:bg-branddark shadow-lg shadow-brand/30 transition-transform hover:-translate-y-1 text-xs tracking-widest">BUKA TRACKER</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -383,14 +405,14 @@
             window.antrianCounters = { loket: 1, poliUmum: 1, poliGigi: 1 };
             window.antrianList = [];
         }
-        window.trackingInterval = null; // Store interval ID for live tracking
+        window.trackingInterval = null; 
 
         // INIT: Check Fullscreen Display Mode OR Auto Login
         window.onload = () => {
             const urlParams = new URLSearchParams(window.location.search);
             const pathname = window.location.pathname;
             
-            // CEK TRACKING URL PARAMETER DARI BARCODE (Langsung Verifikasi)
+            // CEK TRACKING URL PARAMETER DARI BARCODE (Langsung Verifikasi Bypass)
             if(urlParams.get('track')) {
                 const trackToken = urlParams.get('track');
                 document.getElementById('track_token').value = trackToken;
@@ -477,12 +499,8 @@
                 const overlay = document.getElementById('ticketModalOverlay');
                 const card = document.getElementById('ticketModalCard');
                 
-                let letter = 'A';
-                if(data.poli === 'Poli Umum') letter = 'B';
-                else if(data.poli === 'Poli Gigi') letter = 'C';
-                
-                const numParts = data.id.split('-');
-                const queueNo = `${letter}-${numParts[numParts.length-1]}`;
+                // Gunakan No Antrian ASLI dari server jika ada, jika tidak, hitung manual (fallback lama)
+                let queueNo = data.noAntrian || "N/A";
                 
                 document.getElementById('ticketQueueNo').innerText = queueNo;
                 document.getElementById('ticketPoli').innerText = data.poli;
@@ -505,6 +523,15 @@
                 const overlay = document.getElementById('ticketModalOverlay');
                 const card = document.getElementById('ticketModalCard');
                 overlay.classList.add('opacity-0'); card.classList.remove('scale-100'); card.classList.add('scale-95'); setTimeout(() => { overlay.classList.add('hidden'); }, 300);
+            },
+            closeTrackingModal: () => {
+                const overlay = document.getElementById('trackingModalOverlay');
+                const card = document.getElementById('trackingModalCard');
+                overlay.classList.add('opacity-0'); card.classList.remove('scale-100'); card.classList.add('scale-95'); 
+                setTimeout(() => { 
+                    overlay.classList.add('hidden'); 
+                    window.history.replaceState({}, document.title, "/"); // Bersihkan parameter URL
+                }, 300);
             }
         };
 
@@ -593,15 +620,16 @@
                 UI.loader(false);
                 
                 if(res && res.status === 'success' && Array.isArray(res.data)) {
-                    // Find patient by ID Daftar or Token
+                    // Cari pasien berdasarkan ID Daftar / Token (Dari Backend)
                     const patientQueue = res.data.find(a => a.idDaftar === token || a.idDaftar.includes(token));
                     
                     if(!patientQueue) {
-                         UI.toast('Data Antrian tidak ditemukan atau sudah Selesai dilayani.', true);
-                         // Fallback ke login biasa jika token tidak valid
+                         UI.toast('Antrian tidak ditemukan atau sudah Selesai dilayani.', true);
                          document.getElementById('viewLogin').classList.remove('hidden');
                          return;
                     }
+                    
+                    UI.closeTrackingModal();
                     
                     document.getElementById('viewLogin').classList.add('hidden');
                     document.getElementById('viewTracker').classList.remove('hidden');
@@ -636,38 +664,31 @@
             const trackCard = document.getElementById('liveTrackingCard');
             if(trackCard) trackCard.classList.remove('hidden');
 
-            let letter = 'A';
-            if(myData.poli === 'Poli Umum') letter = 'B';
-            else if(myData.poli === 'Poli Gigi') letter = 'C';
+            // Ambil nomor asli dari backend, jika gagal fallback
+            const myQueueNo = myData.noAntrian || "N/A";
 
-            // Extract number from ID (e.g., REG-260620-0004 -> 0004 -> B-004)
-            const numParts = myData.idDaftar.split('-');
-            const rawNum = parseInt(numParts[numParts.length-1], 10) || 1;
-            const myQueueNo = `${letter}-${rawNum.toString().padStart(3, '0')}`;
-
-            // Logika Menentukan Panggilan Saat Ini (Nomor TERBESAR dengan status yang BUKAN menunggu)
+            // Ambil semua data pada poli yang sama
             const samePoliAll = allData.filter(a => a.poli === myData.poli);
             
-            // Cari yg sedang/sudah dilayani
-            const servedQueues = samePoliAll.filter(a => a.status !== 'Menunggu').map(a => parseInt(a.idDaftar.split('-').pop(), 10) || 1);
+            // Logika Menentukan Panggilan Saat Ini (Realtime dari Status Backend)
+            const servedQueues = samePoliAll.filter(a => a.status !== 'Menunggu');
+            let currentServingNo = "Belum Ada";
             
-            let currentServingRaw = 1;
             if(servedQueues.length > 0) {
-                currentServingRaw = Math.max(...servedQueues); 
-                // Misal B-002 Selesai, berarti antrian LCD sedang di B-002 / B-003
+                // Yang sudah dilayani (Diurutkan berdasarkan noAntrian terbesar yg dipanggil)
+                servedQueues.sort((a,b) => a.noAntrian.localeCompare(b.noAntrian));
+                currentServingNo = servedQueues[servedQueues.length - 1].noAntrian;
             } else {
-                // Jika belum ada yg dilayani sama sekali, ambil yg paling awal daftar
-                const waitingQueues = samePoliAll.filter(a => a.status === 'Menunggu').map(a => parseInt(a.idDaftar.split('-').pop(), 10) || 1);
-                if(waitingQueues.length > 0) currentServingRaw = Math.min(...waitingQueues);
+                // Jika belum ada yg dipanggil, berarti yg antrian terendah
+                const waitingQueues = samePoliAll.filter(a => a.status === 'Menunggu');
+                if(waitingQueues.length > 0) {
+                    waitingQueues.sort((a,b) => a.noAntrian.localeCompare(b.noAntrian));
+                    currentServingNo = waitingQueues[0].noAntrian;
+                }
             }
-            
-            const currentServingNo = `${letter}-${currentServingRaw.toString().padStart(3, '0')}`;
 
-            // Hitung sisa antrian (Jumlah pasien dengan nomor KECIL dari myQueue tapi BUKAN Selesai)
-            const remaining = samePoliAll.filter(a => {
-                const n = parseInt(a.idDaftar.split('-').pop(), 10) || 1;
-                return n < rawNum && a.status === 'Menunggu';
-            }).length;
+            // Hitung sisa antrian di depan (yang statusnya Menunggu dan nomor antriannya lebih kecil)
+            const remaining = samePoliAll.filter(a => a.status === 'Menunggu' && a.noAntrian.localeCompare(myData.noAntrian) < 0).length;
 
             let statusText = myData.status.toUpperCase();
             let statusColor = "bg-yellow-100 text-yellow-800";
@@ -706,17 +727,12 @@
         window.printTicket = () => {
             const data = window.printTicketData;
             if(!data) return;
-            window.reprintTicket(data.id, data.rm, data.nama, data.poli, data.token || data.id);
+            window.reprintTicket(data.id, data.rm, data.nama, data.poli, data.noAntrian, data.token || data.id);
             UI.closeTicketModal();
         };
 
-        window.reprintTicket = (id, rm, nama, poli, token = null) => {
-            let letter = 'A';
-            if(poli === 'Poli Umum') letter = 'B';
-            else if(poli === 'Poli Gigi') letter = 'C';
-            
-            const numParts = id.split('-');
-            const queueNo = `${letter}-${numParts[numParts.length-1]}`;
+        window.reprintTicket = (id, rm, nama, poli, noAntrian, token = null) => {
+            const queueNo = noAntrian && noAntrian.includes('-') ? noAntrian : "A-000"; // Dari Backend
             
             const pa = document.getElementById('printArea');
             let html = `
@@ -736,6 +752,7 @@
                 <hr style="border-top:1px dashed #ccc; margin:10px 0;">
                 <p style="font-size:14px; margin:5px 0; font-weight:900; color: #1e293b;">${nama}</p>
                 <p style="font-size:10px; margin:0; font-weight: bold; color: #555;">RM-${rm.replace('RM-','')}</p>
+                <p style="font-size:10px; margin:0; font-weight: bold; color: #555;">ID: ${id}</p>
             `;
                 
             if(token) {
@@ -966,11 +983,11 @@
                                 <span class="font-black text-slate-800 text-base truncate pr-2">${d.nama}</span>
                                 <span class="text-[10px] font-black text-white bg-slate-800 px-2 py-1 rounded tracking-widest shrink-0">${d.tipe}</span>
                             </div>
-                            <p class="text-[11px] font-mono font-bold text-brand bg-blue-50/50 inline-block px-2 py-1 rounded">${d.idDaftar} | ${d.noRM}</p>
+                            <p class="text-[11px] font-mono font-bold text-brand bg-blue-50/50 inline-block px-2 py-1 rounded">No: ${d.noAntrian || 'N/A'} | ${d.idDaftar}</p>
                             <div class="flex justify-between items-center mt-3 pt-3 border-t border-slate-200/50">
                                 <span class="text-xs font-black text-slate-500 uppercase tracking-widest">${d.status}</span> 
                                 <div class="flex gap-2">
-                                    <button onclick="reprintTicket('${d.idDaftar}', '${d.noRM}', '${d.nama}', '${d.poli}', '${d.idDaftar}')" class="bg-blue-100 text-brand px-2.5 py-1.5 rounded-lg hover:bg-brand hover:text-white transition-colors shadow-sm" title="Cetak Antrian"><i class="fas fa-print"></i></button>
+                                    <button onclick="reprintTicket('${d.idDaftar}', '${d.noRM}', '${d.nama}', '${d.poli}', '${d.noAntrian || ''}', '${d.idDaftar}')" class="bg-blue-100 text-brand px-2.5 py-1.5 rounded-lg hover:bg-brand hover:text-white transition-colors shadow-sm" title="Cetak Antrian"><i class="fas fa-print"></i></button>
                                     <select onchange="ubahStatusAntrian('${d.idDaftar}', this.value)" class="text-[11px] p-2 rounded-lg border border-slate-200 font-bold outline-none cursor-pointer bg-white">
                                         <option value="">Ubah Status</option>
                                         <option value="Selesai RME">Selesai</option>
@@ -1066,17 +1083,37 @@
                 const prefixAlpha = String.fromCharCode(66 + idx); 
                 
                 const poliId = poli;
-                const counter = window.antrianCounters[poliId] || 1;
-                const poliNum = formatNumber(counter, prefixAlpha);
                 const safeId = poliId.replace(/\s+/g, '');
                 
                 const poliAntrian = window.antrianList ? window.antrianList.filter(a => a.poli === poli) : [];
+                poliAntrian.sort((a,b) => (a.noAntrian || "").localeCompare(b.noAntrian || ""));
+                
+                let currentPatient = null;
+                if (!AppState.isDisplayMode) {
+                     // Mode Admin (Frontdesk) -> Bisa kontrol manual lewat tombol +/-
+                     const counter = window.antrianCounters[poliId] || 1;
+                     if(poliAntrian.length > 0 && counter <= poliAntrian.length) {
+                          currentPatient = poliAntrian[counter-1];
+                     }
+                } else {
+                     // Mode TV LCD (Display) -> FULL OTOMATIS BACA DARI BACKEND
+                     const waiting = poliAntrian.filter(a => a.status === 'Menunggu');
+                     if (waiting.length > 0) {
+                         currentPatient = waiting[0];
+                     } else if(poliAntrian.length > 0) {
+                         const done = poliAntrian.filter(a => a.status !== 'Menunggu');
+                         if(done.length > 0) currentPatient = done[done.length - 1];
+                     }
+                }
+
+                let poliNum = "N/A";
                 let namaPoli = "Hamba Allah";
                 let dokPoli = "Menunggu Dokter";
-                
-                if(poliAntrian.length > 0 && counter <= poliAntrian.length) {
-                    namaPoli = poliAntrian[counter-1].nama;
-                    dokPoli = poliAntrian[counter-1].dokter || "Menunggu Dokter";
+
+                if(currentPatient) {
+                    poliNum = currentPatient.noAntrian || "N/A";
+                    namaPoli = currentPatient.nama;
+                    dokPoli = currentPatient.dokter || "Menunggu Dokter";
                 }
 
                 html += `
@@ -1260,12 +1297,8 @@
             const cvs = document.getElementById('odontoCanvas'); const ctx = cvs.getContext('2d');
             ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 2;
             for(let i=0; i<16; i++){ 
-                // Upper
-                ctx.beginPath(); ctx.arc(35 + (i*35), 45, 14, 0, 2*Math.PI); ctx.stroke();
-                ctx.beginPath(); ctx.arc(35 + (i*35), 45, 6, 0, 2*Math.PI); ctx.stroke();
-                // Lower
-                ctx.beginPath(); ctx.arc(35 + (i*35), 105, 14, 0, 2*Math.PI); ctx.stroke();
-                ctx.beginPath(); ctx.arc(35 + (i*35), 105, 6, 0, 2*Math.PI); ctx.stroke();
+                ctx.beginPath(); ctx.arc(35 + (i*35), 45, 14, 0, 2*Math.PI); ctx.stroke(); ctx.beginPath(); ctx.arc(35 + (i*35), 45, 6, 0, 2*Math.PI); ctx.stroke();
+                ctx.beginPath(); ctx.arc(35 + (i*35), 105, 14, 0, 2*Math.PI); ctx.stroke(); ctx.beginPath(); ctx.arc(35 + (i*35), 105, 6, 0, 2*Math.PI); ctx.stroke();
             }
             let draw = false; const drawPoint = (e) => { if(!draw) return; e.preventDefault(); const r = cvs.getBoundingClientRect(); const sX = cvs.width / r.width; const sY = cvs.height / r.height; const x = ((e.clientX || (e.touches && e.touches[0].clientX)) - r.left) * sX; const y = ((e.clientY || (e.touches && e.touches[0].clientY)) - r.top) * sY; ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI*2); ctx.fill(); };
             cvs.addEventListener('mousedown', (e)=>{draw=true; drawPoint(e)}); cvs.addEventListener('mousemove', drawPoint); cvs.addEventListener('mouseup', ()=>{draw=false});
