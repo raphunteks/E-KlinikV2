@@ -98,7 +98,7 @@
         @media screen { #printArea { display: none; } }
         @media print { 
             body, html { background: white !important; overflow: visible !important; height: auto !important; margin: 0; padding: 0;}
-            #viewLogin, #mainApp, #viewTracker, #globalLoader, #customAlertOverlay, #ticketModalOverlay, #trackingModalOverlay { display: none !important; } 
+            #viewLogin, #mainApp, #viewTracker, #globalLoader, #customAlertOverlay, #ticketModalOverlay { display: none !important; } 
             #printArea { display: block !important; position: absolute; left: 0; top: 0; width: 100%; padding: 0; margin:0; background: white;} 
         }
         
@@ -109,7 +109,7 @@
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 26px; width: 26px; border-radius: 50%; background: #ef4444; cursor: pointer; margin-top: -9px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 3px solid white; } 
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 8px; cursor: pointer; background: #e2e8f0; border-radius: 4px; }
         
-        /* Fluid Typography for Antrian numbers to fix scaling issues */
+        /* Fluid Typography for Antrian numbers */
         .antrian-number {
             font-size: clamp(3rem, 8vw, 6rem);
             line-height: 1;
@@ -135,28 +135,6 @@
             </div>
             <p class="text-slate-600 font-bold text-sm leading-relaxed mb-8" id="customAlertMessage">Pesan akan muncul disini...</p>
             <button type="button" onclick="UI.closeCustomAlert()" class="w-full bg-brand text-white font-black py-4 rounded-xl shadow-lg hover:bg-branddark transition-all transform hover:-translate-y-1 tracking-widest text-sm outline-none">OKE, MENGERTI</button>
-        </div>
-    </div>
-
-    <!-- MODAL LIVE TRACKING (Untuk Pasien via QR) -->
-    <div id="trackingModalOverlay" class="fixed inset-0 bg-slate-900/80 backdrop-blur-xl z-[999999] hidden flex items-center justify-center p-4 transition-opacity duration-300 opacity-0">
-        <div class="bg-white/90 backdrop-blur-xl border border-white p-6 md:p-8 rounded-[2rem] shadow-2xl max-w-md w-full transform scale-95 transition-transform duration-300" id="trackingModalCard">
-            <div class="text-center mb-6">
-                <div class="w-16 h-16 bg-brand rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg border border-slate-100 overflow-hidden">
-                    <img src="axalogo.png" alt="Axa Logo" class="w-full h-full object-contain p-2" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                    <i class="fas fa-search text-white text-xl hidden"></i>
-                </div>
-                <h3 class="font-black text-slate-800 text-xl tracking-tight">Verifikasi Live Tracking</h3>
-                <p class="text-xs text-slate-500 font-bold mt-2">Sistem mendeteksi Token Antrian. Masukkan Tgl Lahir Pasien untuk melihat berkas.</p>
-            </div>
-            <form onsubmit="verifyLiveTracking(event)" class="space-y-4">
-                <input type="hidden" id="track_token">
-                <div><label>Tanggal Lahir Pasien * (Abaikan untuk Demo)</label><input type="date" id="track_dob" class="input-med"></div>
-                <div class="flex gap-3 mt-4">
-                    <button type="button" onclick="UI.closeTrackingModal()" class="w-1/3 bg-slate-100 text-slate-600 font-black py-3 rounded-xl hover:bg-slate-200 transition-colors text-xs tracking-widest">BATAL</button>
-                    <button type="submit" class="flex-1 bg-brand text-white font-black py-3 rounded-xl hover:bg-branddark shadow-lg shadow-brand/30 transition-transform hover:-translate-y-1 text-xs tracking-widest">BUKA TRACKER</button>
-                </div>
-            </form>
         </div>
     </div>
 
@@ -276,21 +254,24 @@
             <div id="liveTrackingCard" class="glass-card p-6 md:p-8 rounded-[2rem] hidden border-t-8 border-yellow-500 shadow-xl">
                 <h3 class="font-black text-slate-800 mb-2 text-sm uppercase tracking-widest text-center">Status Antrian Anda</h3>
                 <div class="flex flex-col items-center justify-center py-6">
-                    <p class="text-xs font-bold text-slate-500 mb-2" id="trackPoliName">POLI UMUM</p>
-                    <h1 class="text-7xl md:text-8xl font-black text-brand tracking-tighter drop-shadow-md mb-3" id="trackQueueNo">B-000</h1>
-                    <span class="bg-yellow-100 text-yellow-800 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest animate-pulse" id="trackStatus">MENUNGGU DILAYANI</span>
+                    <p class="text-xs font-bold text-slate-500 mb-2" id="trackPoliName">MEMUAT...</p>
+                    <h1 class="text-7xl md:text-8xl font-black text-brand tracking-tighter drop-shadow-md mb-3" id="trackQueueNo">-</h1>
+                    <span class="bg-blue-100 text-blue-800 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest animate-pulse" id="trackStatus">SINKRONISASI...</span>
                 </div>
                 <div class="bg-slate-50 p-5 rounded-xl border border-slate-100 text-center shadow-inner flex flex-col gap-2">
-                    <p class="text-sm md:text-base font-black text-slate-700">Panggilan Saat Ini: <span id="trackCurrentServing" class="text-brand text-xl ml-2">B-000</span></p>
-                    <p class="text-xs font-bold text-slate-500 mt-2">Sisa antrian di depan Anda: <span id="trackRemaining" class="text-red-500 font-black text-base">0</span> Pasien</p>
+                    <p class="text-sm md:text-base font-black text-slate-700">Panggilan Saat Ini: <span id="trackCurrentServing" class="text-brand text-xl ml-2">-</span></p>
+                    <p class="text-xs font-bold text-slate-500 mt-2">Sisa antrian di depan Anda: <span id="trackRemaining" class="text-red-500 font-black text-base">-</span> Pasien</p>
                 </div>
             </div>
 
-            <div class="glass-card p-6 md:p-8 rounded-[2rem]">
+            <!-- CPPT HISTORY CARD (HIDDEN ON BARCODE SCAN FOR PRIVACY) -->
+            <div id="patientHistoryCard" class="glass-card p-6 md:p-8 rounded-[2rem] hidden">
                 <h3 class="font-black text-brand mb-6 border-b border-slate-200 pb-3 text-xl flex items-center"><i class="fas fa-history mr-3 text-brand"></i> Riwayat Kunjungan (CPPT)</h3>
                 <div id="pasienHistoryList" class="space-y-4"></div>
             </div>
-            <div class="glass-card p-6 md:p-8 rounded-[2rem]">
+            
+            <!-- MEDICAL RECORD DOWNLOAD (HIDDEN ON BARCODE SCAN FOR PRIVACY) -->
+            <div id="patientDownloadCard" class="glass-card p-6 md:p-8 rounded-[2rem] hidden">
                 <h3 class="font-black text-brand mb-6 border-b border-slate-200 pb-3 text-xl flex items-center"><i class="fas fa-file-pdf mr-3 text-brand"></i> Unduh Berkas Medis</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <button type="button" class="bg-white/80 border-2 border-white font-black text-slate-700 py-5 px-6 rounded-2xl hover:border-brand hover:text-brand shadow-sm transition-all flex justify-between items-center group" onclick="UI.customAlert('Pemberitahuan', 'Fitur Unduh Hasil Laboratorium (PDF) akan diaktifkan sepenuhnya saat sistem dalam mode produksi akhir.')"><span>Hasil Laboratorium</span> <i class="fas fa-download text-slate-300 group-hover:text-brand text-xl"></i></button>
@@ -412,14 +393,10 @@
             const urlParams = new URLSearchParams(window.location.search);
             const pathname = window.location.pathname;
             
-            // CEK TRACKING URL PARAMETER DARI BARCODE (Langsung Verifikasi Bypass)
+            // CEK TRACKING URL PARAMETER DARI BARCODE (Langsung Verifikasi Bypass Polling)
             if(urlParams.get('track')) {
                 const trackToken = urlParams.get('track');
-                document.getElementById('track_token').value = trackToken;
-                
-                // Langsung Bypass Login Screen dan Auto Verifikasi API
-                document.getElementById('viewLogin').classList.add('hidden');
-                verifyLiveTracking(null, trackToken); // Auto eksekusi
+                startLiveTracking(trackToken);
                 return; // Stop eksekusi agar tetap di layar depan
             }
             
@@ -523,15 +500,6 @@
                 const overlay = document.getElementById('ticketModalOverlay');
                 const card = document.getElementById('ticketModalCard');
                 overlay.classList.add('opacity-0'); card.classList.remove('scale-100'); card.classList.add('scale-95'); setTimeout(() => { overlay.classList.add('hidden'); }, 300);
-            },
-            closeTrackingModal: () => {
-                const overlay = document.getElementById('trackingModalOverlay');
-                const card = document.getElementById('trackingModalCard');
-                overlay.classList.add('opacity-0'); card.classList.remove('scale-100'); card.classList.add('scale-95'); 
-                setTimeout(() => { 
-                    overlay.classList.add('hidden'); 
-                    window.history.replaceState({}, document.title, window.location.pathname); // Bersihkan parameter URL bersih
-                }, 300);
             }
         };
 
@@ -593,6 +561,12 @@
                     setTimeout(() => {
                         document.getElementById('viewLogin').classList.add('hidden');
                         document.getElementById('viewTracker').classList.remove('hidden');
+                        
+                        // Show History panels if logged in via RM and DOB
+                        document.getElementById('patientHistoryCard').classList.remove('hidden');
+                        document.getElementById('patientDownloadCard').classList.remove('hidden');
+                        document.getElementById('liveTrackingCard').classList.add('hidden'); // Hide live tracking if manual login
+                        
                         try {
                             document.getElementById('pasienPortalName').textContent = (res.pasien.nama || 'Pasien') + ' (' + (res.pasien.rm || '') + ')';
                             const hl = document.getElementById('pasienHistoryList');
@@ -608,56 +582,47 @@
             } catch (error) { UI.loader(false); UI.toast('API Error: ' + error.message, true); }
         }
         
-        async function verifyLiveTracking(e, directToken = null) {
-            if(e) e.preventDefault();
-            const token = directToken || document.getElementById('track_token').value;
+        // FUNGSI KHUSUS LANDING PAGE LIVE TRACKING DARI SCAN BARCODE (BYPASS TANPA LOGIN)
+        function startLiveTracking(token) {
+            document.getElementById('viewLogin').classList.add('hidden');
+            document.getElementById('viewTracker').classList.remove('hidden');
+            document.getElementById('pasienPortalName').textContent = "LIVE TRACKING MODE";
             
-            UI.loader(true, 'Sinkronisasi Tracking Sistem...');
+            // Sembunyikan Rekam Medis (Privasi), Hanya Tampilkan Status Antrian
+            document.getElementById('patientHistoryCard').classList.add('hidden');
+            document.getElementById('patientDownloadCard').classList.add('hidden');
             
-            try {
-                // Fetch current queue from API
-                const res = await ZettBackend.call('getAntrianAktif');
-                UI.loader(false);
-                
-                if(res && res.status === 'success' && Array.isArray(res.data)) {
-                    // Cari pasien berdasarkan ID Daftar (REG-XXX)
-                    const patientQueue = res.data.find(a => a.idDaftar === token || a.idDaftar.includes(token));
-                    
-                    if(!patientQueue) {
-                         UI.toast('Antrian tidak ditemukan atau sudah Selesai dilayani.', true);
-                         document.getElementById('viewLogin').classList.remove('hidden');
-                         return;
+            const trackCard = document.getElementById('liveTrackingCard');
+            trackCard.classList.remove('hidden');
+            
+            // Initial state (Poling Mode)
+            document.getElementById('trackPoliName').innerText = "MEMUAT...";
+            document.getElementById('trackQueueNo').innerText = "-";
+            document.getElementById('trackCurrentServing').innerText = "-";
+            document.getElementById('trackRemaining').innerText = "-";
+            document.getElementById('trackStatus').innerText = "SINKRONISASI...";
+            document.getElementById('trackStatus').className = "bg-blue-100 text-blue-800 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest animate-pulse";
+            
+            const fetchAndUpdate = async () => {
+                try {
+                    const res = await ZettBackend.call('getAntrianAktif');
+                    if(res && res.status === 'success' && Array.isArray(res.data)) {
+                        const patientQueue = res.data.find(a => a.idDaftar === token || a.idDaftar.includes(token));
+                        if(patientQueue) {
+                            updateTrackingUI(patientQueue, res.data);
+                        } else {
+                            document.getElementById('trackStatus').innerText = "TIDAK AKTIF / SELESAI";
+                            document.getElementById('trackStatus').className = "bg-slate-100 text-slate-600 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest";
+                        }
                     }
-                    
-                    UI.closeTrackingModal();
-                    
-                    document.getElementById('viewLogin').classList.add('hidden');
-                    document.getElementById('viewTracker').classList.remove('hidden');
-                    document.getElementById('pasienPortalName').textContent = "LIVE TRACKING MODE";
-                    
-                    // Start Realtime Update loop for Tracker
-                    if(window.trackingInterval) clearInterval(window.trackingInterval);
-                    updateTrackingUI(patientQueue, res.data); // Initial update
-                    window.trackingInterval = setInterval(async () => {
-                        try {
-                            const newRes = await ZettBackend.call('getAntrianAktif');
-                            if(newRes && newRes.status === 'success') {
-                                const updatedPatient = newRes.data.find(a => a.idDaftar === token || a.idDaftar.includes(token));
-                                if(updatedPatient) updateTrackingUI(updatedPatient, newRes.data);
-                            }
-                        } catch(err){}
-                    }, 5000); 
-
-                } else {
-                    UI.toast('Gagal memuat data antrian', true);
-                    document.getElementById('viewLogin').classList.remove('hidden');
+                } catch(err) {
+                    console.log("Polling error");
                 }
-
-            } catch(err) {
-                UI.loader(false);
-                UI.toast('Koneksi Gagal', true);
-                document.getElementById('viewLogin').classList.remove('hidden');
-            }
+            };
+            
+            fetchAndUpdate();
+            if(window.trackingInterval) clearInterval(window.trackingInterval);
+            window.trackingInterval = setInterval(fetchAndUpdate, 5000); // Sinkronisasi setiap 5 detik
         }
         
         function updateTrackingUI(myData, allData) {
@@ -674,11 +639,11 @@
             let currentServingNo = "-";
             const waitingQueues = samePoliAll.filter(a => a.status === 'Menunggu');
             
-            // Urutkan berdasarkan noAntrian (A-001, A-002, dll)
+            // Urutkan berdasarkan noAntrian terkecil
             waitingQueues.sort((a,b) => (a.noAntrian || "").localeCompare(b.noAntrian || ""));
             
             if(waitingQueues.length > 0) {
-                currentServingNo = waitingQueues[0].noAntrian; // Yang paling depan ngantri
+                currentServingNo = waitingQueues[0].noAntrian; // Yang paling depan antri saat ini
             } else {
                 // Kalo gaada yg menunggu, ambil yg terakhir selesai
                 const doneQueues = samePoliAll.filter(a => a.status !== 'Menunggu');
@@ -790,9 +755,6 @@
             document.getElementById('workArea').innerHTML = ''; 
             document.getElementById('liveTrackingCard')?.classList.add('hidden');
             if(window.trackingInterval) clearInterval(window.trackingInterval);
-            
-            // Clear URL
-            window.history.replaceState({}, document.title, window.location.pathname); 
         }
         
         function logoutPasien() { 
@@ -801,9 +763,6 @@
             document.getElementById('formPasien').reset();
             document.getElementById('liveTrackingCard')?.classList.add('hidden');
             if(window.trackingInterval) clearInterval(window.trackingInterval);
-            
-            // Clear URL
-            window.history.replaceState({}, document.title, window.location.pathname); 
         }
 
         // --- 4. SPA ROUTER ---
