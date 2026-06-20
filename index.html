@@ -195,7 +195,7 @@
                         </div>
                         <div><label class="text-slate-500">No HP / WhatsApp *</label><input type="tel" id="o_hp" class="input-med !bg-slate-50 border-slate-200 !text-slate-700" required></div>
                         <div><label class="text-slate-500">Poli Tujuan *</label><select id="o_poli" class="input-med !bg-slate-50 border-slate-200 !text-slate-700"><option>Poli Umum</option><option>Poli Gigi</option></select></div>
-                        <div><label class="text-slate-500">Dokter Tujuan *</label><select id="o_dokter" class="input-med !bg-slate-50 border-slate-200 !text-slate-700"><option>dr. Administrator</option><option>dr. Destinasi MKes</option><option>drg. Spesialis</option></select></div>
+                        <div><label class="text-slate-500">Dokter Tujuan *</label><select id="o_dokter" class="input-med !bg-slate-50 border-slate-200 !text-slate-700"><option>drg. Hj. Kurniawaty, Sp.KG</option><option>dr. Arsyad, Sp.U</option><option>drg. Andi Rifka Rahmayanti, S.KG</option></select></div>
                         <div><label class="text-slate-500">Keluhan</label><textarea id="o_keluhan" class="input-med !bg-slate-50 border-slate-200 !text-slate-700 resize-none" rows="2"></textarea></div>
 
                         <button type="submit" class="w-full bg-brand text-white font-black py-4 rounded-xl hover:bg-branddark transition-transform hover:-translate-y-1 mt-6 shadow-lg shadow-brand/30 tracking-widest">DAFTAR SEKARANG</button>
@@ -430,7 +430,7 @@
                 const res = await ZettBackend.call('doLogin', document.getElementById('username').value, document.getElementById('password').value);
                 if(res && res.status === 'success' && res.user) {
                     AppState.user = res.user;
-                    localStorage.setItem('axa_user', JSON.stringify(res.user)); // Save Login
+                    localStorage.setItem('axa_user', JSON.stringify(res.user)); 
                     
                     document.getElementById('viewLogin').classList.add('opacity-0', 'scale-[0.95]', 'pointer-events-none');
                     setTimeout(() => {
@@ -517,7 +517,8 @@
             { id: 'kasir', label: 'Kasir & POS', icon: 'fa-cash-register', roles: ['Super Admin', 'Kasir'] },
             { id: 'consent', label: 'Informed Consent', icon: 'fa-file-signature', roles: ['Super Admin', 'Dokter', 'Frontdesk'] },
             { id: 'farmasi', label: 'Farmasi & Dispense', icon: 'fa-pills', roles: ['Super Admin', 'Apoteker'] },
-            { id: 'surat', label: 'Surat Keterangan', icon: 'fa-envelope-open-text', roles: ['Super Admin', 'Dokter', 'Frontdesk'] }
+            { id: 'surat', label: 'Surat Keterangan', icon: 'fa-envelope-open-text', roles: ['Super Admin', 'Dokter', 'Frontdesk'] },
+            { id: 'staff', label: '+ Manajemen Staff', icon: 'fa-user-md', roles: ['Super Admin'] } 
         ];
 
         function renderMenu() {
@@ -557,6 +558,7 @@
                 else if(vid === 'consent') buildConsent(wa);
                 else if(vid === 'farmasi') buildFarmasi(wa);
                 else if(vid === 'surat') buildSurat(wa);
+                else if(vid === 'staff') buildStaff(wa);
             } catch(e) {
                 console.error("View Builder Error:", e);
                 UI.toast("Terjadi kesalahan sistem saat memuat modul.", true);
@@ -621,7 +623,7 @@
                                 <div class="space-y-5">
                                     <h4 class="font-black text-brand text-sm border-b border-slate-200/50 pb-3 uppercase tracking-widest"><i class="fas fa-stethoscope mr-2"></i> Data Kunjungan</h4>
                                     <div><label>Poli Tujuan *</label><select id="r_poli" class="input-med"><option>Poli Umum</option><option>Poli Gigi</option><option>IGD</option></select></div>
-                                    <div><label>Dokter Spesialis Tujuan *</label><select id="r_dokter" class="input-med"><option>dr. Administrator</option><option>dr. Destinasi MKes</option><option>drg. Spesialis</option></select></div>
+                                    <div><label>Dokter Spesialis Tujuan *</label><select id="r_dokter" class="input-med"><option>drg. Hj. Kurniawaty, Sp.KG</option><option>dr. Arsyad, Sp.U</option><option>drg. Andi Rifka Rahmayanti, S.KG</option></select></div>
                                     <div><label>Pembiayaan</label><select id="r_biaya" class="input-med"><option>PRIBADI</option><option>BPJS KESEHATAN</option><option>ASURANSI LAIN</option></select></div>
                                     <div><label>Keluhan Utama</label><textarea id="r_keluhan" class="input-med resize-none" rows="3"></textarea></div>
                                     <div class="pt-6">
@@ -704,23 +706,23 @@
                         </div>
                         <div class="flex gap-3 admin-control flex-wrap justify-center">
                             <button type="button" onclick="fetchAntrianRealtime()" class="bg-white/20 hover:bg-white/30 text-white font-bold px-4 py-3 rounded-xl text-xs tracking-widest transition-colors border border-white/30 shadow-sm"><i class="fas fa-sync-alt mr-2"></i> SYNC REALTIME</button>
-                            <a href="?view=display" target="_blank" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold px-4 py-3 rounded-xl text-xs tracking-widest transition-colors shadow-sm flex items-center"><i class="fas fa-expand mr-2"></i> BUKA DISPLAY LCD</a>
+                            <a href="/displayantrian" target="_blank" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold px-4 py-3 rounded-xl text-xs tracking-widest transition-colors shadow-sm flex items-center"><i class="fas fa-expand mr-2"></i> BUKA DISPLAY LCD</a>
                         </div>
                     </div>
                     
                     <div class="flex-1 p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 bg-slate-50/50">
                         <!-- LOKET -->
-                        <div class="glass-card rounded-[2rem] border-t-[12px] border-medblue-500 shadow-xl flex flex-col overflow-hidden relative">
+                        <div class="glass-card rounded-[2rem] border-t-[12px] border-medblue-500 shadow-xl flex flex-col relative">
                             <h2 class="text-xl md:text-2xl font-black text-medblue-900 py-4 border-b border-medblue-100 bg-white/60 backdrop-blur-md text-center shrink-0">ANTRIAN LOKET</h2>
                             <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 relative min-h-[200px]">
-                                <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-4">
+                                <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-6">
                                     <button type="button" onclick="changeAntrian('loket', -1)" class="admin-control w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-medblue-700 rounded-full text-xl md:text-2xl font-black hover:bg-medblue-50 transition-colors shadow-md border border-slate-100">-</button>
-                                    <div class="bg-white/80 backdrop-blur px-4 py-3 md:px-6 md:py-4 rounded-[1.5rem] shadow-inner border border-white flex-1 max-w-[200px] md:max-w-[250px] text-center flex flex-col items-center justify-center">
-                                        <h1 class="text-5xl md:text-7xl xl:text-[90px] font-black text-slate-800 leading-none tracking-tighter" id="dispLoket">A-001</h1>
+                                    <div class="bg-white/80 backdrop-blur px-4 py-4 md:py-6 rounded-[1.5rem] shadow-inner border border-white flex-1 text-center flex items-center justify-center">
+                                        <h1 class="text-5xl sm:text-6xl md:text-7xl xl:text-[90px] font-black text-slate-800 leading-none tracking-tighter" id="dispLoket">A-001</h1>
                                     </div>
                                     <button type="button" onclick="changeAntrian('loket', 1)" class="admin-control w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-medblue-700 rounded-full text-xl md:text-2xl font-black hover:bg-medblue-50 transition-colors shadow-md border border-slate-100">+</button>
                                 </div>
-                                <p class="text-sm md:text-lg font-black text-slate-600 truncate w-full text-center px-2" id="namaLoket">Hamba Allah</p>
+                                <p class="text-sm md:text-xl font-black text-slate-600 truncate w-full text-center px-2" id="namaLoket">Hamba Allah</p>
                             </div>
                             <button type="button" class="admin-control bg-slate-800 text-white p-4 md:p-5 font-black tracking-widest uppercase cursor-pointer hover:bg-medblue-700 transition-colors text-sm md:text-base w-full shrink-0" onclick="panggilAudio(document.getElementById('dispLoket').innerText, 'Loket Pendaftaran', document.getElementById('namaLoket').innerText)"><i class="fas fa-volume-up mr-2"></i> PANGGIL</button>
                         </div>
@@ -730,15 +732,15 @@
                             <div class="absolute inset-0 bg-green-50/40 opacity-50 z-0 pointer-events-none"></div>
                             <h2 class="text-xl md:text-2xl font-black text-green-800 py-4 border-b border-green-100 bg-white/60 backdrop-blur-md z-10 text-center shrink-0">POLI UMUM</h2>
                             <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 z-10 min-h-[200px]">
-                                <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-4">
+                                <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-6">
                                     <button type="button" onclick="changeAntrian('poliUmum', -1)" class="admin-control w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-green-700 rounded-full text-xl md:text-2xl font-black hover:bg-green-50 transition-colors shadow-md border border-slate-100">-</button>
-                                    <div class="bg-white/80 backdrop-blur px-4 py-3 md:px-6 md:py-4 rounded-[1.5rem] shadow-inner border border-white flex-1 max-w-[200px] md:max-w-[250px] text-center flex flex-col items-center justify-center">
-                                        <h1 class="text-5xl md:text-7xl xl:text-[90px] font-black text-brand leading-none drop-shadow-sm tracking-tighter" id="dispPoliUmum">B-001</h1>
+                                    <div class="bg-white/80 backdrop-blur px-4 py-4 md:py-6 rounded-[1.5rem] shadow-inner border border-white flex-1 text-center flex items-center justify-center">
+                                        <h1 class="text-5xl sm:text-6xl md:text-7xl xl:text-[90px] font-black text-brand leading-none drop-shadow-sm tracking-tighter" id="dispPoliUmum">B-001</h1>
                                     </div>
                                     <button type="button" onclick="changeAntrian('poliUmum', 1)" class="admin-control w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-green-700 rounded-full text-xl md:text-2xl font-black hover:bg-green-50 transition-colors shadow-md border border-slate-100">+</button>
                                 </div>
-                                <p class="text-sm md:text-lg font-black text-slate-600 truncate w-full text-center px-2" id="namaPoliUmum">Hamba Allah</p>
-                                <p class="text-[10px] md:text-xs font-bold text-green-700 mt-2 bg-white/80 px-4 py-1.5 rounded-xl backdrop-blur-md border border-white shadow-sm inline-block text-center" id="dokPoliUmum">Menunggu Dokter</p>
+                                <p class="text-sm md:text-xl font-black text-slate-600 truncate w-full text-center px-2" id="namaPoliUmum">Hamba Allah</p>
+                                <p class="text-[10px] md:text-xs font-bold text-green-700 mt-3 bg-white/80 px-4 py-1.5 rounded-xl backdrop-blur-md border border-white shadow-sm inline-block text-center" id="dokPoliUmum">Menunggu Dokter</p>
                             </div>
                             <button type="button" class="admin-control bg-slate-800 text-white p-4 md:p-5 font-black tracking-widest uppercase z-10 cursor-pointer hover:bg-green-600 transition-colors text-sm md:text-base w-full shrink-0 group-hover:shadow-[0_-10px_20px_rgba(32,68,152,0.3)]" onclick="panggilAudio(document.getElementById('dispPoliUmum').innerText, 'Poli Umum', document.getElementById('namaPoliUmum').innerText)"><i class="fas fa-volume-up mr-2"></i> PANGGIL</button>
                         </div>
@@ -748,15 +750,15 @@
                             <div class="absolute inset-0 bg-yellow-50/40 opacity-50 z-0 pointer-events-none"></div>
                             <h2 class="text-xl md:text-2xl font-black text-yellow-800 py-4 border-b border-yellow-100 bg-white/60 backdrop-blur-md z-10 text-center shrink-0">POLI GIGI</h2>
                             <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 z-10 min-h-[200px]">
-                                <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-4">
+                                <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-6">
                                     <button type="button" onclick="changeAntrian('poliGigi', -1)" class="admin-control w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-yellow-700 rounded-full text-xl md:text-2xl font-black hover:bg-yellow-50 transition-colors shadow-md border border-slate-100">-</button>
-                                    <div class="bg-white/80 backdrop-blur px-4 py-3 md:px-6 md:py-4 rounded-[1.5rem] shadow-inner border border-white flex-1 max-w-[200px] md:max-w-[250px] text-center flex flex-col items-center justify-center">
-                                        <h1 class="text-5xl md:text-7xl xl:text-[90px] font-black text-yellow-600 leading-none drop-shadow-sm tracking-tighter" id="dispPoliGigi">C-001</h1>
+                                    <div class="bg-white/80 backdrop-blur px-4 py-4 md:py-6 rounded-[1.5rem] shadow-inner border border-white flex-1 text-center flex items-center justify-center">
+                                        <h1 class="text-5xl sm:text-6xl md:text-7xl xl:text-[90px] font-black text-yellow-600 leading-none drop-shadow-sm tracking-tighter" id="dispPoliGigi">C-001</h1>
                                     </div>
                                     <button type="button" onclick="changeAntrian('poliGigi', 1)" class="admin-control w-10 h-10 md:w-12 md:h-12 shrink-0 bg-white text-yellow-700 rounded-full text-xl md:text-2xl font-black hover:bg-yellow-50 transition-colors shadow-md border border-slate-100">+</button>
                                 </div>
-                                <p class="text-sm md:text-lg font-black text-slate-600 truncate w-full text-center px-2" id="namaPoliGigi">Hamba Allah</p>
-                                <p class="text-[10px] md:text-xs font-bold text-yellow-700 mt-2 bg-white/80 px-4 py-1.5 rounded-xl backdrop-blur-md border border-white shadow-sm inline-block text-center" id="dokPoliGigi">Menunggu Dokter</p>
+                                <p class="text-sm md:text-xl font-black text-slate-600 truncate w-full text-center px-2" id="namaPoliGigi">Hamba Allah</p>
+                                <p class="text-[10px] md:text-xs font-bold text-yellow-700 mt-3 bg-white/80 px-4 py-1.5 rounded-xl backdrop-blur-md border border-white shadow-sm inline-block text-center" id="dokPoliGigi">Menunggu Dokter</p>
                             </div>
                             <button type="button" class="admin-control bg-slate-800 text-white p-4 md:p-5 font-black tracking-widest uppercase z-10 cursor-pointer hover:bg-yellow-500 transition-colors text-sm md:text-base w-full shrink-0 group-hover:shadow-[0_-10px_20px_rgba(234,179,8,0.3)]" onclick="panggilAudio(document.getElementById('dispPoliGigi').innerText, 'Poli Gigi', document.getElementById('namaPoliGigi').innerText)"><i class="fas fa-volume-up mr-2"></i> PANGGIL</button>
                         </div>
@@ -832,31 +834,27 @@
         };
 
         window.panggilAudio = (nomor, poli, nama = "Hamba Allah") => { 
-            const sfx = new Audio('https://actions.google.com/sounds/v1/communications/communication_channel_open.ogg');
+            const sfx = new Audio('https://actions.google.com/sounds/v1/alarms/ding_dong_chime.ogg');
             sfx.volume = 1.0;
             sfx.play().catch(e=>console.log("Audio play error", e));
             
             sfx.onended = () => {
                 const splitNomor = nomor.split('').map(c => c === '-' ? ' ' : c).join(' ');
                 let text = `Mohon perhatian. Panggilan kepada nomor antrian, ${splitNomor}. `;
-                if(nama && nama !== "Hamba Allah" && nama !== "Nama Pasien") text += `Atas nama Bapak atau Ibu, ${nama}. `;
+                if(nama && nama !== "Hamba Allah" && nama !== "Nama Pasien") text += `Atas nama, Bapak atau Ibu, ${nama}. `;
                 text += `Dimohon untuk segera menuju ke, ${poli}. Terima kasih.`; 
                 
                 if(window.speechSynthesis.speaking) window.speechSynthesis.cancel();
                 const utterance = new SpeechSynthesisUtterance(text); 
                 utterance.lang = 'id-ID'; 
-                utterance.rate = 0.8; 
-                utterance.pitch = 1.2; 
+                utterance.rate = 0.75; 
+                utterance.pitch = 1.15; 
                 
                 let voices = window.speechSynthesis.getVoices();
                 const playSound = () => {
                     voices = window.speechSynthesis.getVoices();
                     const idVoice = voices.find(v => (v.lang.includes('id') || v.lang.includes('ID') || v.name.includes('Indonesian')) && v.name.includes('Female'));
                     if(idVoice) utterance.voice = idVoice;
-                    else {
-                        const backupVoice = voices.find(v => v.lang.includes('id') || v.lang.includes('ID'));
-                        if(backupVoice) utterance.voice = backupVoice;
-                    }
                     window.speechSynthesis.speak(utterance);
                 };
 
@@ -1045,7 +1043,7 @@
         };
         function cetakStrukKasir(p, t) {
             const pa = document.getElementById('printArea');
-            pa.innerHTML = `<div style="width: 80mm; padding: 5mm; font-family: monospace; font-size:12px; margin: 0 auto;"><div style="text-align: center;"><h2 style="margin:0; font-size: 20px;">AXA KLINIK</h2><p style="margin:5px 0;">NOTA PEMBAYARAN RESMI</p></div><hr style="border-top:1px dashed #000; margin: 10px 0;"><p style="margin:2px 0;">TRX ID : ${p.trxId}</p><p style="margin:2px 0;">WAKTU  : ${new Date().toLocaleString('id-ID')}</p><p style="margin:2px 0;">KASIR  : ${AppState.user?.name || 'Kasir'}</p><hr style="border-top:1px dashed #000; margin: 10px 0;"><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>TOTAL TAGIHAN</span> <span style="font-size:14px; font-weight:bold;">Rp ${t.toLocaleString('id-ID')}</span></div><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>BAYAR (${p.metode})</span> <span>Rp ${p.dibayar.toLocaleString('id-ID')}</span></div><hr style="border-top:1px dashed #000; margin: 10px 0;"><div style="display:flex; justify-content:space-between; font-weight:bold; font-size:14px;"><span>KEMBALIAN</span> <span>Rp ${p.kembalian.toLocaleString('id-ID')}</span></div><div style="text-align: center; margin-top:20px; font-size: 10px;"><p>Terima kasih atas kunjungan Anda.<br>Semoga lekas sembuh.</p></div></div>`;
+            pa.innerHTML = `<div style="width: 80mm; padding: 5mm; font-family: monospace; font-size:12px; margin: 0 auto;"><div style="text-align: center;"><h2 style="margin:0; font-size: 20px;">AXA E KLINIK</h2><p style="margin:5px 0;">NOTA PEMBAYARAN RESMI</p></div><hr style="border-top:1px dashed #000; margin: 10px 0;"><p style="margin:2px 0;">TRX ID : ${p.trxId}</p><p style="margin:2px 0;">WAKTU  : ${new Date().toLocaleString('id-ID')}</p><p style="margin:2px 0;">KASIR  : ${AppState.user?.name || 'Kasir'}</p><hr style="border-top:1px dashed #000; margin: 10px 0;"><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>TOTAL TAGIHAN</span> <span style="font-size:14px; font-weight:bold;">Rp ${t.toLocaleString('id-ID')}</span></div><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>BAYAR (${p.metode})</span> <span>Rp ${p.dibayar.toLocaleString('id-ID')}</span></div><hr style="border-top:1px dashed #000; margin: 10px 0;"><div style="display:flex; justify-content:space-between; font-weight:bold; font-size:14px;"><span>KEMBALIAN</span> <span>Rp ${p.kembalian.toLocaleString('id-ID')}</span></div><div style="text-align: center; margin-top:20px; font-size: 10px;"><p>Terima kasih atas kunjungan Anda.<br>Semoga lekas sembuh.</p></div></div>`;
             window.print();
         }
 
@@ -1070,65 +1068,10 @@
 
         function buildSurat(container) {
             container.innerHTML = `
-            <div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Surat & Rujukan (API)</h2></div>
-            <div class="glass-card p-6 md:p-10 rounded-[2rem] max-w-2xl mx-auto border-t-8 border-brand shadow-xl">
-                <form onsubmit="submitSurat(event)" id="fSurat" class="space-y-6">
-                    <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">No RM Pasien</label><input type="text" id="s_rm" class="w-full p-4 border-2 border-slate-100 bg-white rounded-2xl uppercase focus:border-brand outline-none font-bold transition-colors" required></div>
-                    <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Jenis Surat</label><select id="s_tipe" class="w-full p-4 border-2 border-slate-100 bg-white rounded-2xl focus:border-brand outline-none font-bold cursor-pointer transition-colors" onchange="toggleFormSurat(this.value)"><option value="Sakit">Surat Sakit (Izin Istirahat)</option><option value="Sehat">Surat Keterangan Sehat</option><option value="Rujukan">Surat Rujukan RS / Eksternal</option></select></div>
-                    
-                    <!-- Dinamic Fields -->
-                    <div id="formSakit" class="bg-blue-50/50 p-6 rounded-[1.5rem] border border-blue-100 space-y-5 shadow-inner">
-                        <div><label class="text-blue-800">Lama Istirahat (Hari)</label><input type="number" id="s_lama" class="input-med border-white" value="2"></div>
-                        <div class="grid grid-cols-2 gap-5"><div><label class="text-blue-800">Dari Tanggal</label><input type="date" id="s_dari" class="input-med border-white"></div><div><label class="text-blue-800">Sampai Tanggal</label><input type="date" id="s_sampai" class="input-med border-white"></div></div>
-                    </div>
-
-                    <div id="formSehat" class="bg-green-50/50 p-6 rounded-[1.5rem] border border-green-100 space-y-5 hidden shadow-inner">
-                        <div><label class="text-green-800">Keperluan</label><input type="text" id="s_keperluan" class="input-med border-white" placeholder="Cth: Daftar PNS"></div>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div><label class="text-green-800">TB (cm)</label><input type="number" id="s_tb" class="input-med px-3 text-sm border-white"></div>
-                            <div><label class="text-green-800">BB (kg)</label><input type="number" id="s_bb" class="input-med px-3 text-sm border-white"></div>
-                            <div><label class="text-green-800">Tensi</label><input type="text" id="s_tensi" class="input-med px-3 text-sm border-white" placeholder="120/80"></div>
-                            <div><label class="text-green-800">Suhu</label><input type="number" step="0.1" id="s_suhu" class="input-med px-3 text-sm border-white" placeholder="36.5"></div>
-                        </div>
-                    </div>
-
-                    <div id="formRujukan" class="bg-purple-50/50 p-6 rounded-[1.5rem] border border-purple-100 space-y-5 hidden shadow-inner">
-                        <div><label class="text-purple-800">RS Tujuan Rujukan</label><input type="text" id="s_rs" class="input-med border-white" placeholder="Cth: RSUD Kota"></div>
-                        <div><label class="text-purple-800">Poli Tujuan</label><input type="text" id="s_poli" class="input-med border-white" placeholder="Cth: Poli Penyakit Dalam"></div>
-                        <div><label class="text-purple-800">Diagnosa Sementara</label><input type="text" id="s_diagrujuk" class="input-med border-white" placeholder="Cth: Observasi Febris"></div>
-                    </div>
-
-                    <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Pekerjaan Pasien</label><input type="text" id="s_kerja" class="w-full p-4 border-2 border-slate-100 bg-white rounded-2xl focus:border-brand outline-none font-bold transition-colors" required placeholder="Cth: Karyawan Swasta"></div>
-                    <button type="submit" class="w-full bg-brand text-white font-black tracking-widest py-4 rounded-2xl shadow-lg hover:bg-branddark transition-all transform hover:-translate-y-1 text-lg"><i class="fas fa-print mr-2"></i> CETAK SURAT RESMI</button>
-                </form>
-            </div>`;
-            
-            const tzoffset = (new Date()).getTimezoneOffset() * 60000;
-            const localISOTime = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
-            setTimeout(() => { 
-                if(document.getElementById('s_dari')) document.getElementById('s_dari').value = localISOTime;
-                if(document.getElementById('s_sampai')) document.getElementById('s_sampai').value = localISOTime;
-            }, 100);
+            <div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Penerbitan Surat Medis (API)</h2></div><div class="glass-card p-6 md:p-10 rounded-[2rem] max-w-2xl mx-auto border-t-8 border-brand shadow-xl"><form onsubmit="submitSurat(event)" id="fSurat" class="space-y-6"><div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">No RM Pasien</label><input type="text" id="s_rm" class="w-full p-4 border-2 border-slate-100 bg-white rounded-2xl uppercase focus:border-brand outline-none font-bold transition-colors" required></div><div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Jenis Surat</label><select id="s_tipe" class="w-full p-4 border-2 border-slate-100 bg-white rounded-2xl focus:border-brand outline-none font-bold cursor-pointer transition-colors" onchange="toggleFormSurat(this.value)"><option value="Sakit">Surat Sakit (Izin Istirahat)</option><option value="Sehat">Surat Keterangan Sehat</option><option value="Rujukan">Surat Rujukan RS / Eksternal</option></select></div><div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Keterangan Detail</label><textarea id="s_ket" class="w-full p-4 border-2 border-slate-100 bg-slate-50 rounded-2xl focus:border-brand outline-none resize-none font-bold text-slate-700 transition-colors" rows="4" required placeholder="Contoh: Mohon diberikan izin istirahat selama 3 hari karena kondisi medis..."></textarea></div><button type="submit" class="w-full bg-brand text-white font-black tracking-widest py-4 rounded-2xl shadow-lg hover:bg-branddark transition-all transform hover:-translate-y-1 text-lg"><i class="fas fa-cloud-upload-alt mr-2"></i> POST API & CETAK</button></form></div>`;
         }
-
-        window.toggleFormSurat = (val) => {
-            document.getElementById('formSakit').classList.add('hidden');
-            document.getElementById('formSehat').classList.add('hidden');
-            document.getElementById('formRujukan').classList.add('hidden');
-            if(val === 'Sakit') document.getElementById('formSakit').classList.remove('hidden');
-            else if(val === 'Sehat') document.getElementById('formSehat').classList.remove('hidden');
-            else if(val === 'Rujukan') document.getElementById('formRujukan').classList.remove('hidden');
-        };
-
         window.submitSurat = async (e) => { 
-            e.preventDefault(); 
-            const tipe = document.getElementById('s_tipe').value;
-            let detail = { kerja: document.getElementById('s_kerja').value };
-            if(tipe === 'Sakit') { detail.lama = document.getElementById('s_lama').value; detail.dari = document.getElementById('s_dari').value; detail.sampai = document.getElementById('s_sampai').value; }
-            else if (tipe === 'Sehat') { detail.keperluan = document.getElementById('s_keperluan').value; detail.tb = document.getElementById('s_tb').value; detail.bb = document.getElementById('s_bb').value; detail.tensi = document.getElementById('s_tensi').value; detail.suhu = document.getElementById('s_suhu').value; }
-            else if (tipe === 'Rujukan') { detail.rs = document.getElementById('s_rs').value; detail.poli = document.getElementById('s_poli').value; detail.diagrujuk = document.getElementById('s_diagrujuk').value; }
-
-            const p = { noRM: document.getElementById('s_rm').value, tipe: tipe, detail: detail, dokter: AppState.user?.name || 'Dokter' }; 
+            e.preventDefault(); const p = { noRM: document.getElementById('s_rm').value, tipe: document.getElementById('s_tipe').value, keterangan: document.getElementById('s_ket').value, dokter: AppState.user?.name || 'Dokter' }; 
             UI.loader(true, 'POST API Surat...'); 
             try {
                 const res = await ZettBackend.call('saveSuratKet', p); UI.loader(false); 
@@ -1136,14 +1079,14 @@
                     UI.customAlert('SURAT DITERBITKAN!', `ID Dokumen: <b>${res.printData.id}</b> telah tercatat di server. Printer akan otomatis terbuka.`);
                     document.getElementById('fSurat').reset(); const pa = document.getElementById('printArea'); 
                     
-                    let kontenHTML = `<div style="width:100%; max-width:800px; margin:0 auto; padding:40px; font-family:'Times New Roman', serif; line-height:1.6;"><div style="text-align:center; border-bottom:3px solid #000; padding-bottom:10px; margin-bottom:20px; display:flex; align-items:center;"><div style="width:80px; height:80px; border:1px solid #000; border-radius:15px; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:10px; overflow:hidden;"><img src="axalogo.png" style="width:100%; height:100%; object-fit:contain;" onerror="this.style.display='none'"></div><div style="flex:1;"><h1 style="margin:0; font-size:24px;">Axa E Klinik - Klinik Utama</h1><p style="margin:0; font-size:14px;">Jl. Destinasi Raya A6-7 Semarang</p><p style="margin:0; font-size:12px;">Telp. 081226855647</p></div></div><h3 style="text-align:center; text-decoration:underline; font-size:18px;">*** SURAT ${tipe.toUpperCase()} ***</h3><p style="text-align:center; margin-top:-10px; font-size:12px;">Nomor: ${res.printData.id}</p><p style="margin-top:30px;">Yang bertanda tangan dibawah ini menerangkan bahwa:</p><table style="margin-left:40px; margin-bottom:20px;"><tr><td width="120">No Rekam Medis</td><td>: ${p.noRM}</td></tr><tr><td>Pekerjaan</td><td>: ${detail.kerja}</td></tr>`;
+                    let kontenHTML = `<div style="width:100%; max-width:800px; margin:0 auto; padding:40px; font-family:'Times New Roman', serif; line-height:1.6;"><div style="text-align:center; border-bottom:3px solid #000; padding-bottom:10px; margin-bottom:20px; display:flex; align-items:center;"><div style="width:80px; height:80px; border:1px solid #000; border-radius:15px; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:10px; overflow:hidden;"><img src="axalogo.png" style="width:100%; height:100%; object-fit:contain;" onerror="this.style.display='none'"></div><div style="flex:1;"><h1 style="margin:0; font-size:24px;">Axa E Klinik - Klinik Utama</h1><p style="margin:0; font-size:14px;">Jl. Destinasi Raya A6-7 Semarang</p><p style="margin:0; font-size:12px;">Telp. 081226855647</p></div></div><h3 style="text-align:center; text-decoration:underline; font-size:18px;">*** SURAT ${p.tipe.toUpperCase()} ***</h3><p style="text-align:center; margin-top:-10px; font-size:12px;">Nomor: ${res.printData.id}</p><p style="margin-top:30px;">Yang bertanda tangan dibawah ini menerangkan bahwa:</p><table style="margin-left:40px; margin-bottom:20px;"><tr><td width="120">No Rekam Medis</td><td>: ${p.noRM}</td></tr><tr><td>Pekerjaan</td><td>: Karyawan Swasta</td></tr>`;
                     
-                    if(tipe === 'Sehat') {
-                        kontenHTML += `<tr><td>TB / BB</td><td>: ${detail.tb} cm / ${detail.bb} kg</td></tr><tr><td>Tensi / Suhu</td><td>: ${detail.tensi} mmHg / ${detail.suhu} C</td></tr></table><p style="text-indent:40px;">Pada pemeriksaan kesehatan yang sudah dilakukan pada hari ini maka dengan ini menyatakan yang bersangkutan dalam kondisi <strong>SEHAT</strong>. Surat Keterangan ini dibuat untuk <strong>${detail.keperluan}</strong>.</p>`;
-                    } else if (tipe === 'Sakit') {
-                        kontenHTML += `</table><p style="text-indent:40px;">Pada pemeriksaan kesehatan yang sudah dilakukan pada hari ini maka dengan ini menyatakan yang bersangkutan dalam kondisi tidak sehat, sehingga perlu beristirahat selama <strong>${detail.lama}</strong> hari, dari tanggal <strong>${detail.dari}</strong> s/d <strong>${detail.sampai}</strong>. Untuk itu saudara dengan nama diatas tidak bisa bekerja / sekolah sebagaimana biasanya.</p>`;
-                    } else if (tipe === 'Rujukan') {
-                        kontenHTML += `</table><p style="text-indent:40px;">Bersama surat ini kami merujuk pasien tersebut untuk mendapatkan penanganan lebih lanjut di <strong>${detail.rs}</strong> pada <strong>${detail.poli}</strong>. Dengan diagnosa sementara: <strong>${detail.diagrujuk}</strong>. Mohon bantuan dan penanganannya.</p>`;
+                    if(p.tipe === 'Sehat') {
+                        kontenHTML += `<tr><td>TB / BB</td><td>: 160 cm / 60 kg</td></tr><tr><td>Tensi / Suhu</td><td>: 120/80 mmHg / 36.5 C</td></tr></table><p style="text-indent:40px;">Pada pemeriksaan kesehatan yang sudah dilakukan pada hari ini maka dengan ini menyatakan yang bersangkutan dalam kondisi <strong>SEHAT</strong>. Surat Keterangan ini dibuat untuk melengkapi administrasi.</p>`;
+                    } else if (p.tipe === 'Sakit') {
+                        kontenHTML += `</table><p style="text-indent:40px;">Pada pemeriksaan kesehatan yang sudah dilakukan pada hari ini maka dengan ini menyatakan yang bersangkutan dalam kondisi tidak sehat, sehingga perlu beristirahat untuk waktu tertentu. Untuk itu saudara dengan nama diatas tidak bisa bekerja / sekolah sebagaimana biasanya.</p>`;
+                    } else if (p.tipe === 'Rujukan') {
+                        kontenHTML += `</table><p style="text-indent:40px;">Bersama surat ini kami merujuk pasien tersebut untuk mendapatkan penanganan lebih lanjut di Rumah Sakit. Mohon bantuan dan penanganannya.</p>`;
                     }
 
                     kontenHTML += `<div style="margin-top:40px; display:flex; justify-content:space-between; align-items:flex-end;"><div style="position:relative; width:100px; height:100px;"><div id="qrSurat"></div><img src="axalogo.png" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); width:25px; height:25px; background:white; padding:2px; border-radius:50%;" onerror="this.style.display='none'"></div><div style="text-align:center; width:250px;"><p>Semarang, ${res.printData.tgl}</p><p>Dokter Pemeriksa,</p><div style="height:60px;"></div><p style="text-decoration:underline; font-weight:bold;">${p.dokter}</p></div></div></div>`;
@@ -1156,7 +1099,7 @@
         };
 
         function buildConsent(container) {
-            container.innerHTML = `<div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Informed Consent API</h2></div><div class="glass-card p-6 md:p-10 rounded-[2rem] max-w-2xl mx-auto shadow-xl"><div class="bg-blue-50 p-5 rounded-2xl mb-8 border border-blue-100 shadow-inner"><p class="text-sm text-blue-900 text-justify font-bold leading-relaxed">"Saya memahami dan menyetujui dilakukannya tindakan medis sesuai dengan Standar Operasional Prosedur (SOP) klinik, setelah mendapat penjelasan komprehensif mengenai risiko dan manfaat dari dokter penanggung jawab."</p></div><div class="mb-6"><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">No RM Pasien / NIK Wali</label><input type="text" id="ic_rm" placeholder="Contoh: RM-2601-0001" class="w-full p-4 border-2 border-slate-100 bg-slate-50 rounded-2xl uppercase outline-none focus:bg-white focus:border-brand font-bold transition-colors"></div><div class="mb-8"><label class="block text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-3">Tanda Tangan Digital (Base64 API)</label><div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm relative group"><canvas id="signatureCanvas" width="500" height="200" class="w-full h-auto bg-slate-50 rounded-xl"></canvas><button type="button" onclick="document.getElementById('signatureCanvas').getContext('2d').clearRect(0,0,500,200)" class="absolute top-5 right-5 bg-white/90 backdrop-blur border border-gray-200 text-slate-500 hover:text-red-500 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-colors"><i class="fas fa-eraser mr-1"></i> Hapus</button></div></div><button onclick="submitConsent()" class="w-full bg-medgreen-600 text-white font-black tracking-widest py-4 rounded-2xl shadow-lg hover:bg-medgreen-700 transition-all transform hover:-translate-y-1 text-lg"><i class="fas fa-cloud-upload-alt mr-2"></i> POST API PERSETUJUAN</button></div>`;
+            container.innerHTML = `<div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Informed Consent API</h2></div><div class="glass-card p-6 md:p-10 rounded-[2rem] max-w-2xl mx-auto shadow-xl"><div class="bg-blue-50 p-5 rounded-2xl mb-8 border border-blue-100 shadow-inner"><p class="text-sm text-blue-900 text-justify font-bold leading-relaxed">"Saya memahami dan menyetujui dilakukannya tindakan medis sesuai dengan Standar Operasional Prosedur (SOP) klinik, setelah mendapat penjelasan komprehensif mengenai risiko dan manfaat dari dokter penanggung jawab."</p></div><div class="mb-6"><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">No RM Pasien / NIK Wali</label><input type="text" id="ic_rm" placeholder="Contoh: RM-2601-0001" class="w-full p-4 border-2 border-slate-100 bg-slate-50 rounded-2xl uppercase outline-none focus:border-brand font-bold transition-colors"></div><div class="mb-8"><label class="block text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-3">Tanda Tangan Digital (Base64 API)</label><div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm relative group"><canvas id="signatureCanvas" width="500" height="200" class="w-full h-auto bg-slate-50 rounded-xl"></canvas><button type="button" onclick="document.getElementById('signatureCanvas').getContext('2d').clearRect(0,0,500,200)" class="absolute top-5 right-5 bg-white/90 backdrop-blur border border-gray-200 text-slate-500 hover:text-red-500 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-colors"><i class="fas fa-eraser mr-1"></i> Hapus</button></div></div><button onclick="submitConsent()" class="w-full bg-medgreen-600 text-white font-black tracking-widest py-4 rounded-2xl shadow-lg hover:bg-medgreen-700 transition-all transform hover:-translate-y-1 text-lg"><i class="fas fa-cloud-upload-alt mr-2"></i> POST API PERSETUJUAN</button></div>`;
             const cvs = document.getElementById('signatureCanvas'); const ctx = cvs.getContext('2d'); ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.strokeStyle = '#1e3a8a'; let draw = false;
             const pos = (e) => { const r = cvs.getBoundingClientRect(); const sX = cvs.width / r.width; const sY = cvs.height / r.height; const x = e.touches ? e.touches[0].clientX : e.clientX; const y = e.touches ? e.touches[0].clientY : e.clientY; return { x: (x - r.left) * sX, y: (y - r.top) * sY }; };
             const start = (e) => { e.preventDefault(); draw = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }; const move = (e) => { e.preventDefault(); if(!draw) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
@@ -1203,6 +1146,47 @@
         }
         window.cariObat = async () => { const kw = document.getElementById('searchObatInput').value; const c = document.getElementById('hasilCariObat'); c.innerHTML = '<div class="text-center p-8"><i class="fas fa-circle-notch fa-spin text-medblue-400 text-3xl"></i></div>'; try { const res = await ZettBackend.call('searchObatBackend', kw); if(res && res.status === 'success') { if(!res.data || res.data.length === 0) c.innerHTML = '<div class="bg-red-50 text-red-600 p-4 rounded-xl text-center font-black border border-red-100">Obat tidak ditemukan di API.</div>'; else c.innerHTML = res.data.map(o => `<div class="p-4 border-2 rounded-2xl flex justify-between items-center transition-all hover:shadow-md ${o.stok <= o.min ? 'bg-red-50/80 border-red-200' : 'bg-white/80 backdrop-blur-sm border-slate-100 hover:border-brand'}"><div><p class="font-black text-slate-800 text-lg">${o.nama}</p><p class="text-[10px] text-slate-400 mt-1 font-mono">${o.id} | <span class="bg-slate-100 px-2 py-1 rounded font-bold">${o.kategori}</span></p><p class="text-sm mt-2 font-black">Stok: <span class="${o.stok <= o.min ? 'text-red-600 bg-red-100 px-2 py-0.5 rounded-lg':'text-medgreen-600'}">${o.stok}</span></p></div><button type="button" onclick="document.getElementById('f_id').value='${o.id}'" class="bg-blue-50 text-brand hover:bg-brand hover:text-white px-5 py-3 rounded-xl text-sm font-black transition-colors shadow-sm">Pilih</button></div>`).join(''); } } catch(err) { c.innerHTML='<div class="text-center p-4 font-bold text-red-500">API Server Error</div>'; } };
         window.submitDispense = async (e) => { e.preventDefault(); const idObat = document.getElementById('f_id').value; if(!idObat) return UI.toast('Pilih obat dari tabel kiri!', true); let dArr = []; if(document.getElementById('d_pagi').checked) dArr.push('Pagi'); if(document.getElementById('d_siang').checked) dArr.push('Siang'); if(document.getElementById('d_sore').checked) dArr.push('Malam'); const p = { idObat: idObat, qty: document.getElementById('f_qty').value, dosis: dArr.length ? dArr.join(', ') : 'Sesuai Anjuran', apoteker: AppState.user?.name || 'Apoteker' }; UI.loader(true, 'POST API Dispense...'); try { const res = await ZettBackend.call('dispenseObat', p); UI.loader(false); if(res && res.status==='success') { UI.customAlert('DISPENSE BERHASIL', 'Stok obat berhasil dikurangi dan dicatat dalam log Farmasi.'); cariObat(); document.getElementById('f_qty').value=''; document.getElementById('f_id').value=''; } else UI.toast(res?.message || 'Error', true); } catch(err) { UI.loader(false); UI.toast('API Fetch Error', true); } };
+
+        // G. STAFF MANAGEMENT (NEW)
+        async function buildStaff(container) {
+            container.innerHTML = `
+                <div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Manajemen Staff & Dokter</h2></div>
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    <div class="lg:col-span-4 glass-card p-6 md:p-8 rounded-[2rem] border-t-8 border-brand h-fit">
+                        <h3 class="font-black mb-6 text-brand text-xl tracking-tight flex items-center"><i class="fas fa-user-plus mr-3"></i> Tambah Staff Baru</h3>
+                        <form onsubmit="submitStaff(event)" id="fStaff" class="space-y-4">
+                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Nama Lengkap / Gelar *</label><input type="text" id="st_nama" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-bold text-slate-700" required placeholder="Cth: dr. Budi, Sp.A"></div>
+                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Username *</label><input type="text" id="st_user" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-bold text-slate-700" required></div>
+                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Password *</label><input type="text" id="st_pass" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-bold text-slate-700" required></div>
+                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Role / Akses *</label><select id="st_role" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-bold text-slate-700"><option>Dokter</option><option>Frontdesk</option><option>Kasir</option><option>Apoteker</option><option>Analis Lab</option><option>Super Admin</option></select></div>
+                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Poli / Spesialisasi</label><input type="text" id="st_spesialis" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-bold text-slate-700" placeholder="Cth: Spesialis Anak"></div>
+                            <button type="submit" class="w-full bg-brand text-white font-black tracking-widest py-4 rounded-2xl shadow-lg hover:bg-branddark transition-all mt-6"><i class="fas fa-save mr-2"></i> SIMPAN STAFF</button>
+                        </form>
+                    </div>
+                    <div class="lg:col-span-8 glass-card p-6 md:p-8 rounded-[2rem] border-t-8 border-medgreen-500 overflow-y-auto max-h-[85vh] custom-scrollbar">
+                        <h3 class="font-black mb-6 text-medgreen-800 text-xl tracking-tight flex items-center"><i class="fas fa-users mr-3"></i> Daftar Staff Aktif</h3>
+                        <div class="overflow-x-auto"><table class="w-full med-table"><thead><tr><th>ID</th><th>Nama Staff</th><th>Role</th><th>Spesialisasi</th><th>Status</th></tr></thead><tbody id="tblStaff"><tr><td colspan="5" class="text-center">Memuat...</td></tr></tbody></table></div>
+                    </div>
+                </div>
+            `;
+            loadStaffList();
+        }
+        window.loadStaffList = async () => {
+            const tb = document.getElementById('tblStaff'); tb.innerHTML = '<tr><td colspan="5" class="text-center p-6 text-slate-400"><i class="fas fa-spinner fa-spin text-2xl text-brand"></i></td></tr>';
+            try {
+                const res = await ZettBackend.call('getStaffList');
+                if(res && res.status === 'success' && Array.isArray(res.data)) {
+                    if(res.data.length === 0) tb.innerHTML = '<tr><td colspan="5" class="text-center p-6 text-slate-400 font-bold">Belum ada staff</td></tr>';
+                    else tb.innerHTML = res.data.map(s => `<tr><td class="font-mono text-xs text-slate-400">${s.id}</td><td class="font-bold text-slate-800">${s.nama} <br><span class="text-[9px] text-brand uppercase">${s.username}</span></td><td><span class="bg-blue-50 text-brand px-2 py-1 rounded text-xs font-bold">${s.role}</span></td><td class="text-xs text-slate-600 font-bold">${s.spesialisasi || '-'}</td><td><span class="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest">${s.status}</span></td></tr>`).join('');
+                }
+            } catch(e) { tb.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 font-bold p-6">Error Fetching Data</td></tr>'; }
+        };
+        window.submitStaff = async (e) => {
+            e.preventDefault(); UI.loader(true, 'Menyimpan Staff...');
+            const p = { nama: document.getElementById('st_nama').value, user: document.getElementById('st_user').value, pass: document.getElementById('st_pass').value, role: document.getElementById('st_role').value, spesialisasi: document.getElementById('st_spesialis').value };
+            try { const res = await ZettBackend.call('saveStaff', p); UI.loader(false); if(res && res.status==='success') { UI.toast('Staff ditambahkan!'); document.getElementById('fStaff').reset(); loadStaffList(); } else UI.toast(res?.message, true); } catch(err) { UI.loader(false); }
+        };
+
     </script>
 </body>
 </html>
