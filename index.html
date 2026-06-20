@@ -98,7 +98,7 @@
         @media screen { #printArea { display: none; } }
         @media print { 
             body, html { background: white !important; overflow: visible !important; height: auto !important; margin: 0; padding: 0;}
-            #viewLogin, #mainApp, #viewTracker, #globalLoader, #customAlertOverlay { display: none !important; } 
+            #viewLogin, #mainApp, #viewTracker, #globalLoader, #customAlertOverlay, #ticketModalOverlay { display: none !important; } 
             #printArea { display: block !important; position: absolute; left: 0; top: 0; width: 100%; padding: 0; margin:0; background: white;} 
         }
         
@@ -108,10 +108,10 @@
         input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; } 
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 26px; width: 26px; border-radius: 50%; background: #ef4444; cursor: pointer; margin-top: -9px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 3px solid white; } 
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 8px; cursor: pointer; background: #e2e8f0; border-radius: 4px; }
-
-        /* Dynamic Font Sizing for Antrian */
+        
+        /* Fluid Typography for Antrian numbers to fix scaling issues */
         .antrian-number {
-            font-size: clamp(3rem, 10vw, 6rem);
+            font-size: clamp(3rem, 8vw, 6rem);
             line-height: 1;
         }
     </style>
@@ -124,7 +124,7 @@
         <p class="text-brand font-black text-xl animate-pulse tracking-widest" id="loaderText">Sinkronisasi Data...</p>
     </div>
 
-    <!-- CUSTOM GLASSMORPHISM ALERT MODAL (Pengganti window.alert) -->
+    <!-- CUSTOM GLASSMORPHISM ALERT MODAL -->
     <div id="customAlertOverlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[999999] hidden flex items-center justify-center p-4 transition-opacity duration-300 opacity-0">
         <div class="bg-white/90 backdrop-blur-xl border border-white p-6 md:p-8 rounded-[2rem] shadow-2xl max-w-md w-full transform scale-95 transition-transform duration-300" id="customAlertCard">
             <div class="flex items-center gap-4 mb-4 border-b border-slate-200/50 pb-4">
@@ -135,6 +135,37 @@
             </div>
             <p class="text-slate-600 font-bold text-sm leading-relaxed mb-8" id="customAlertMessage">Pesan akan muncul disini...</p>
             <button type="button" onclick="UI.closeCustomAlert()" class="w-full bg-brand text-white font-black py-4 rounded-xl shadow-lg hover:bg-branddark transition-all transform hover:-translate-y-1 tracking-widest text-sm outline-none">OKE, MENGERTI</button>
+        </div>
+    </div>
+
+    <!-- TICKET MODAL FOR PRINTING QUEUE -->
+    <div id="ticketModalOverlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[999999] hidden flex items-center justify-center p-4 transition-opacity duration-300 opacity-0">
+        <div class="bg-white/95 backdrop-blur-xl border border-white p-6 rounded-[2rem] shadow-2xl max-w-sm w-full text-center transform scale-95 transition-transform duration-300" id="ticketModalCard">
+            <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-md border border-slate-100 overflow-hidden">
+                <img src="axalogo.png" alt="Axa Logo" class="w-full h-full object-contain p-1" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                <i class="fas fa-clinic-medical text-brand text-xl hidden"></i>
+            </div>
+            <h2 class="font-black text-xl text-slate-800 tracking-tight">AXA E-KLINIK</h2>
+            <p class="text-xs text-slate-500 font-bold border-b border-slate-200 pb-4 mb-4 uppercase tracking-widest">Klinik Utama</p>
+            
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 inline-block px-3 py-1 rounded-full mb-2">NOMOR ANTRIAN</p>
+            <h1 class="text-6xl font-black text-brand mb-2 tracking-tighter drop-shadow-sm" id="ticketQueueNo">A-001</h1>
+            <p class="text-base font-black text-slate-700 bg-blue-50 px-4 py-2 rounded-xl inline-block border border-blue-100" id="ticketPoli">Poli Umum</p>
+            
+            <div class="mt-6 border-t border-dashed border-slate-300 pt-4">
+                <p class="text-sm font-black text-slate-800" id="ticketPasien">Nama Pasien</p>
+                <p class="text-[10px] font-bold text-slate-400 font-mono mt-1" id="ticketRM">RM-XXXX</p>
+            </div>
+            
+            <div class="bg-slate-50 p-4 rounded-xl mt-6 border border-slate-100 shadow-inner">
+                <p class="text-[10px] text-slate-500 font-bold leading-relaxed mb-3">Silakan tunggu panggilan di ruang tunggu. Pindai QR Code untuk Live Tracking.</p>
+                <div id="ticketQrCode" class="flex justify-center bg-white p-2 rounded-lg inline-block shadow-sm"></div>
+            </div>
+            
+            <div class="flex gap-3 mt-6">
+                <button onclick="UI.closeTicketModal()" class="w-1/3 bg-slate-100 text-slate-600 font-black py-3.5 rounded-xl hover:bg-slate-200 transition-colors text-xs tracking-widest">TUTUP</button>
+                <button onclick="printTicket()" class="flex-1 bg-brand text-white font-black py-3.5 rounded-xl hover:bg-branddark shadow-lg shadow-brand/30 transition-transform hover:-translate-y-1 text-xs tracking-widest"><i class="fas fa-print mr-2"></i> CETAK ANTRIAN</button>
+            </div>
         </div>
     </div>
 
@@ -183,7 +214,6 @@
             <form id="formOnline" onsubmit="handleDaftarOnline(event)" class="space-y-5 hidden relative z-20 h-[450px] overflow-y-auto custom-scrollbar pr-2 pb-6">
                 <div class="bg-white/95 p-6 rounded-3xl shadow-xl border border-white backdrop-blur-md">
                     <h4 class="font-black text-brand text-sm border-b border-slate-200 pb-3 mb-4 uppercase tracking-widest"><i class="fas fa-hospital-user mr-2"></i> Pendaftaran Online</h4>
-                    
                     <div class="space-y-4">
                         <div><label class="text-slate-500">Jenis Kunjungan</label><div class="flex gap-4"><label class="flex items-center justify-center gap-2 normal-case font-bold text-slate-700 bg-slate-50 px-4 py-3 border rounded-xl cursor-pointer w-full"><input type="radio" name="o_jenis" value="Sakit" checked class="w-4 h-4 accent-brand"> Sakit</label><label class="flex items-center justify-center gap-2 normal-case font-bold text-slate-700 bg-slate-50 px-4 py-3 border rounded-xl cursor-pointer w-full"><input type="radio" name="o_jenis" value="Sehat" class="w-4 h-4 accent-brand"> Sehat</label></div></div>
                         <div><label class="text-slate-500">Jaminan</label><select id="o_jaminan" class="input-med !bg-slate-50 border-slate-200 !text-slate-700"><option>PRIBADI</option><option>BPJS KESEHATAN</option><option>ASURANSI LAIN</option></select></div>
@@ -332,6 +362,7 @@
         };
 
         let AppState = { user: null, charts: {}, isDisplayMode: false };
+        window.printTicketData = null; // Store ticket data globally
         if(typeof window.antrianCounters === 'undefined') {
             window.antrianCounters = { loket: 1, poliUmum: 1, poliGigi: 1 };
             window.antrianList = [];
@@ -411,6 +442,35 @@
             closeCustomAlert: () => {
                 const overlay = document.getElementById('customAlertOverlay');
                 const card = document.getElementById('customAlertCard');
+                overlay.classList.add('opacity-0'); card.classList.remove('scale-100'); card.classList.add('scale-95'); setTimeout(() => { overlay.classList.add('hidden'); }, 300);
+            },
+            showTicketModal: (data) => {
+                window.printTicketData = data;
+                const overlay = document.getElementById('ticketModalOverlay');
+                const card = document.getElementById('ticketModalCard');
+                
+                let letter = 'A';
+                if(data.poli === 'Poli Umum') letter = 'B';
+                else if(data.poli === 'Poli Gigi') letter = 'C';
+                
+                const numParts = data.id.split('-');
+                const queueNo = `${letter}-${numParts[numParts.length-1]}`;
+                
+                document.getElementById('ticketQueueNo').innerText = queueNo;
+                document.getElementById('ticketPoli').innerText = data.poli;
+                document.getElementById('ticketPasien').innerText = data.nama;
+                document.getElementById('ticketRM').innerText = data.rm;
+                
+                document.getElementById('ticketQrCode').innerHTML = '';
+                if(typeof QRCode !== 'undefined') { 
+                    new QRCode(document.getElementById("ticketQrCode"), { text: `https://axaklinik.com/?track=${data.token}`, width: 90, height: 90 }); 
+                } 
+                
+                overlay.classList.remove('hidden'); void overlay.offsetWidth; overlay.classList.remove('opacity-0'); card.classList.remove('scale-95'); card.classList.add('scale-100');
+            },
+            closeTicketModal: () => {
+                const overlay = document.getElementById('ticketModalOverlay');
+                const card = document.getElementById('ticketModalCard');
                 overlay.classList.add('opacity-0'); card.classList.remove('scale-100'); card.classList.add('scale-95'); setTimeout(() => { overlay.classList.add('hidden'); }, 300);
             }
         };
@@ -499,11 +559,44 @@
                 if(res && res.status==='success') { 
                     document.getElementById('formOnline').reset(); 
                     if(res.printData) {
-                        UI.customAlert('REGISTRASI ONLINE BERHASIL!', `<b>Token Lacak: ${res.printData.token}</b><br>No RM: ${res.printData.rm}<br>Poli: ${res.printData.poli}<br><br>Silakan tunjukkan Token ini saat tiba di loket pendaftaran klinik.`);
+                        UI.showTicketModal(res.printData);
                     } 
                 } else UI.toast(res?.message || 'Error', true);
             } catch (err) { UI.loader(false); UI.toast('API Error', true); }
         }
+
+        window.printTicket = () => {
+            const data = window.printTicketData;
+            if(!data) return;
+            let letter = 'A';
+            if(data.poli === 'Poli Umum') letter = 'B';
+            else if(data.poli === 'Poli Gigi') letter = 'C';
+            
+            const numParts = data.id.split('-');
+            const queueNo = `${letter}-${numParts[numParts.length-1]}`;
+
+            const pa = document.getElementById('printArea');
+            pa.innerHTML = `
+            <div style="width: 80mm; padding: 5mm; font-family: monospace; text-align: center; margin:0 auto;">
+                <h2 style="margin:0; font-size: 20px; font-weight:bold;">AXA E-KLINIK</h2>
+                <p style="margin:0; font-size:10px;">Klinik Utama</p>
+                <hr style="margin: 10px 0; border-top: 1px dashed black;">
+                <p style="font-size:12px; margin:0;">NOMOR ANTRIAN</p>
+                <h1 style="font-size:45px; margin:5px 0;">${queueNo}</h1>
+                <p style="font-weight:bold; font-size:16px; margin:0;">${data.poli}</p>
+                <p style="font-size:12px; margin:5px 0;">${data.nama}</p>
+                <p style="font-size:10px; margin:0;">RM: ${data.rm}</p>
+                <hr style="margin: 10px 0; border-top: 1px dashed black;">
+                <p style="font-size:10px; margin-bottom:5px;">Scan QR untuk Live Tracking:</p>
+                <div id="qrcodePrint" style="display:flex; justify-content:center;"></div>
+                <p style="font-size:10px; margin-top:15px;">Terima Kasih Atas Kunjungan Anda</p>
+            </div>`;
+            
+            if(typeof QRCode !== 'undefined') { 
+                new QRCode(document.getElementById("qrcodePrint"), { text: `https://axaklinik.com/?track=${data.token}`, width: 100, height: 100 }); 
+            } 
+            setTimeout(() => window.print(), 500);
+        };
 
         function logout() { 
             localStorage.removeItem('axa_user');
@@ -540,7 +633,7 @@
             const nav = document.getElementById('navMenu'); nav.innerHTML = '';
             Menus.forEach(m => {
                 if(AppState.user?.role && m.roles.includes(AppState.user.role)) {
-                    nav.innerHTML += `<button type="button" onclick="loadView('${m.id}')" data-target="${m.id}" class="flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 font-bold text-sm text-slate-500 hover:bg-slate-100 hover:text-brand w-full text-left outline-none mb-1.5"><i class="fas ${m.icon} w-6 text-center text-lg opacity-70"></i> <span>${m.label}</span></button>`;
+                    nav.innerHTML += `<button type="button" onclick="loadView('${m.id}')" data-target="${m.id}" class="flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 font-bold text-sm text-slate-500 hover:bg-white/60 hover:text-brand w-full text-left outline-none mb-1.5"><i class="fas ${m.icon} w-6 text-center text-lg opacity-70"></i> <span>${m.label}</span></button>`;
                 }
             });
         }
@@ -551,7 +644,7 @@
             document.querySelectorAll('#navMenu button').forEach(a => {
                 if(a.dataset.target === vid) { 
                     a.classList.add('bg-brand','text-white','shadow-lg','shadow-brand/30'); 
-                    a.classList.remove('text-slate-500','hover:bg-slate-100','hover:text-brand'); 
+                    a.classList.remove('text-slate-500','hover:bg-white/60','hover:text-brand'); 
                     a.querySelector('i').classList.remove('opacity-70'); 
                 } else { 
                     a.classList.remove('bg-brand','text-white','shadow-lg','shadow-brand/30'); 
@@ -681,8 +774,7 @@
                 if(res && res.status==='success') { 
                     document.getElementById('fDaftar').reset(); loadFrontdeskQueue(); 
                     if(res.printData) {
-                        UI.customAlert('REGISTRASI BERHASIL!', `<b>No RM: ${res.printData.rm}</b><br>Poli: ${res.printData.poli}<br>Silakan arahkan pasien ke ruang tunggu.`);
-                        cetakStrukQR(res.printData);
+                        UI.showTicketModal(res.printData);
                     } 
                 }
                 else UI.toast(res?.message || 'Error', true);
@@ -727,7 +819,7 @@
                         `}
                     </div>
                     
-                    <div class="flex-1 p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 bg-slate-50/50 min-h-0 relative items-stretch" id="antrianCardsContainer">
+                    <div class="flex-1 p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 bg-slate-50/50 min-h-0 relative items-stretch content-start" id="antrianCardsContainer">
                         <!-- Dynamic Cards will be injected here -->
                     </div>
                     <div class="bg-slate-900 text-slate-400 p-3 text-center text-[9px] md:text-[10px] font-black tracking-widest uppercase border-t border-slate-800 shrink-0">SELAMAT DATANG DI AXA E KLINIK | MELAYANI DENGAN SEPENUH HATI</div>
@@ -756,15 +848,15 @@
             if(window.antrianList && window.antrianList.length > 0) {
                  activePolis = [...new Set(window.antrianList.filter(a => a.status === 'Menunggu' || a.status === 'Selesai RME').map(item => item.poli))];
             }
+            if(activePolis.length === 0) activePolis = ["Poli Umum"]; // Fallback 
 
-            // 1. Render Loket (Selalu ada)
             const loketNum = formatNumber(window.antrianCounters['loket'] || 1, 'A');
             const namaLoket = window.antrianList && window.antrianList.length > 0 ? window.antrianList[Math.min(window.antrianList.length-1, (window.antrianCounters['loket']||1)-1)]?.nama || "Hamba Allah" : "Hamba Allah";
 
             let html = `
-                <div class="glass-card rounded-[2rem] border-t-[12px] md:border-t-[16px] border-medblue-500 shadow-xl flex flex-col relative h-full">
+                <div class="glass-card rounded-[2rem] border-t-[12px] md:border-t-[16px] border-medblue-500 shadow-xl flex flex-col relative h-full min-h-[350px]">
                     <h2 class="text-xl md:text-2xl font-black text-medblue-900 py-4 border-b border-medblue-100 bg-white/60 backdrop-blur-md text-center shrink-0">ANTRIAN LOKET</h2>
-                    <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 relative min-h-[200px]">
+                    <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 relative">
                         <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-4">
                             ${AppState.isDisplayMode ? '' : `<button type="button" onclick="changeAntrian('loket', -1)" class="shrink-0 w-10 h-10 md:w-12 md:h-12 bg-white text-medblue-700 rounded-full text-xl md:text-2xl font-black hover:bg-medblue-50 shadow-md border border-slate-100 pb-1">-</button>`}
                             <div class="bg-white/80 backdrop-blur px-4 py-3 md:px-6 md:py-4 rounded-[1.5rem] shadow-inner border border-white flex-1 text-center flex flex-col items-center justify-center">
@@ -778,10 +870,9 @@
                 </div>
             `;
 
-            // 2. Render Active Polis Dinamis
             activePolis.forEach((poli, idx) => {
                 const prefixColor = idx % 2 === 0 ? 'green' : 'yellow';
-                const prefixAlpha = String.fromCharCode(66 + idx); // B, C, D...
+                const prefixAlpha = String.fromCharCode(66 + idx); 
                 
                 const poliId = poli;
                 const counter = window.antrianCounters[poliId] || 1;
@@ -798,10 +889,10 @@
                 }
 
                 html += `
-                    <div class="glass-card rounded-[2rem] border-t-[12px] md:border-t-[16px] border-${prefixColor}-500 shadow-xl flex flex-col relative group h-full">
+                    <div class="glass-card rounded-[2rem] border-t-[12px] md:border-t-[16px] border-${prefixColor}-500 shadow-xl flex flex-col relative group h-full min-h-[350px]">
                         <div class="absolute inset-0 bg-${prefixColor}-50/40 opacity-50 z-0 pointer-events-none"></div>
                         <h2 class="text-xl md:text-2xl font-black text-${prefixColor}-800 py-4 border-b border-${prefixColor}-100 bg-white/60 backdrop-blur-md z-10 text-center shrink-0 uppercase">${poli}</h2>
-                        <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 z-10 min-h-[200px]">
+                        <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 z-10">
                             <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-4">
                                 ${AppState.isDisplayMode ? '' : `<button type="button" onclick="changeAntrian('${poliId}', -1)" class="shrink-0 w-10 h-10 md:w-12 md:h-12 bg-white text-${prefixColor}-700 rounded-full text-xl md:text-2xl font-black hover:bg-${prefixColor}-50 shadow-md border border-slate-100 pb-1">-</button>`}
                                 <div class="bg-white/80 backdrop-blur px-4 py-3 md:px-6 md:py-4 rounded-[1.5rem] shadow-inner border border-white flex-1 text-center flex flex-col items-center justify-center">
@@ -869,7 +960,6 @@
             sfx.play().then(() => {
                 sfx.onended = speakText;
             }).catch(e => {
-                console.log("SFX Blocked or Error. Fallback to TTS only.");
                 speakText();
             });
             
@@ -974,16 +1064,11 @@
                 }
             } catch (err) { UI.loader(false); }
 
-            // Draw Odontogram Base
             const cvs = document.getElementById('odontoCanvas'); const ctx = cvs.getContext('2d');
             ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 2;
             for(let i=0; i<16; i++){ 
-                // Upper
-                ctx.beginPath(); ctx.arc(35 + (i*35), 45, 14, 0, 2*Math.PI); ctx.stroke();
-                ctx.beginPath(); ctx.arc(35 + (i*35), 45, 6, 0, 2*Math.PI); ctx.stroke();
-                // Lower
-                ctx.beginPath(); ctx.arc(35 + (i*35), 105, 14, 0, 2*Math.PI); ctx.stroke();
-                ctx.beginPath(); ctx.arc(35 + (i*35), 105, 6, 0, 2*Math.PI); ctx.stroke();
+                ctx.beginPath(); ctx.arc(35 + (i*35), 45, 14, 0, 2*Math.PI); ctx.stroke(); ctx.beginPath(); ctx.arc(35 + (i*35), 45, 6, 0, 2*Math.PI); ctx.stroke();
+                ctx.beginPath(); ctx.arc(35 + (i*35), 105, 14, 0, 2*Math.PI); ctx.stroke(); ctx.beginPath(); ctx.arc(35 + (i*35), 105, 6, 0, 2*Math.PI); ctx.stroke();
             }
             let draw = false; const drawPoint = (e) => { if(!draw) return; e.preventDefault(); const r = cvs.getBoundingClientRect(); const sX = cvs.width / r.width; const sY = cvs.height / r.height; const x = ((e.clientX || (e.touches && e.touches[0].clientX)) - r.left) * sX; const y = ((e.clientY || (e.touches && e.touches[0].clientY)) - r.top) * sY; ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI*2); ctx.fill(); };
             cvs.addEventListener('mousedown', (e)=>{draw=true; drawPoint(e)}); cvs.addEventListener('mousemove', drawPoint); cvs.addEventListener('mouseup', ()=>{draw=false});
@@ -1087,7 +1172,7 @@
                     UI.customAlert('BERHASIL DISIMPAN!', 'Hasil Laboratorium telah tersimpan di Database API. Mohon siapkan mesin printer Anda untuk mencetak PDF.');
                     document.getElementById('fLab').reset(); 
                     const pa = document.getElementById('printArea'); pa.innerHTML = `
-                        <div style="width:100%; max-width:800px; margin:0 auto; padding:40px; font-family:'Times New Roman', serif; line-height:1.6;">
+                        <div style="width:100%; max-width:800px; margin:0 auto; padding:40px; font-family:sans-serif;">
                             <div style="text-align:center; border-bottom:3px solid #000; padding-bottom:10px; margin-bottom:20px; display:flex; align-items:center;">
                                 <div style="width:80px; height:80px; border:1px solid #000; border-radius:15px; display:flex; align-items:center; justify-content:center; overflow:hidden;">
                                     <img src="axalogo.png" style="width:100%; height:100%; object-fit:contain;" onerror="this.style.display='none'">
@@ -1221,7 +1306,7 @@
         window.cariObat = async () => { const kw = document.getElementById('searchObatInput').value; const c = document.getElementById('hasilCariObat'); c.innerHTML = '<div class="text-center p-8"><i class="fas fa-circle-notch fa-spin text-medblue-400 text-3xl"></i></div>'; try { const res = await ZettBackend.call('searchObatBackend', kw); if(res && res.status === 'success') { if(!res.data || res.data.length === 0) c.innerHTML = '<div class="bg-red-50 text-red-600 p-4 rounded-xl text-center font-black border border-red-100">Obat tidak ditemukan di API.</div>'; else c.innerHTML = res.data.map(o => `<div class="p-4 border-2 rounded-2xl flex justify-between items-center transition-all hover:shadow-md ${o.stok <= o.min ? 'bg-red-50/80 border-red-200' : 'bg-white/80 backdrop-blur-sm border-slate-100 hover:border-brand'}"><div><p class="font-black text-slate-800 text-lg">${o.nama}</p><p class="text-[10px] text-slate-400 mt-1 font-mono">${o.id} | <span class="bg-slate-100 px-2 py-1 rounded font-bold">${o.kategori}</span></p><p class="text-sm mt-2 font-black">Stok: <span class="${o.stok <= o.min ? 'text-red-600 bg-red-100 px-2 py-0.5 rounded-lg':'text-medgreen-600'}">${o.stok}</span></p></div><button type="button" onclick="document.getElementById('f_id').value='${o.id}'" class="bg-blue-50 text-brand hover:bg-brand hover:text-white px-5 py-3 rounded-xl text-sm font-black transition-colors shadow-sm">Pilih</button></div>`).join(''); } } catch(err) { c.innerHTML='<div class="text-center p-4 font-bold text-red-500">API Server Error</div>'; } };
         window.submitDispense = async (e) => { e.preventDefault(); const idObat = document.getElementById('f_id').value; if(!idObat) return UI.toast('Pilih obat dari tabel kiri!', true); let dArr = []; if(document.getElementById('d_pagi').checked) dArr.push('Pagi'); if(document.getElementById('d_siang').checked) dArr.push('Siang'); if(document.getElementById('d_sore').checked) dArr.push('Malam'); const p = { idObat: idObat, qty: document.getElementById('f_qty').value, dosis: dArr.length ? dArr.join(', ') : 'Sesuai Anjuran', apoteker: AppState.user?.name || 'Apoteker' }; UI.loader(true, 'POST API Dispense...'); try { const res = await ZettBackend.call('dispenseObat', p); UI.loader(false); if(res && res.status==='success') { UI.customAlert('DISPENSE BERHASIL', 'Stok obat berhasil dikurangi dan dicatat dalam log Farmasi.'); cariObat(); document.getElementById('f_qty').value=''; document.getElementById('f_id').value=''; } else UI.toast(res?.message || 'Error', true); } catch(err) { UI.loader(false); UI.toast('API Fetch Error', true); } };
 
-        // G. STAFF MANAGEMENT (NEW)
+        // G. STAFF MANAGEMENT
         async function buildStaff(container) {
             container.innerHTML = `
                 <div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Manajemen Staff & Dokter</h2></div>
