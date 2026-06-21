@@ -202,7 +202,8 @@
             <div class="absolute -bottom-32 -right-32 w-96 h-96 bg-emerald-500 rounded-full opacity-30 blur-[100px]"></div>
         </div>
 
-        <div class="bg-white/10 backdrop-blur-2xl w-full max-w-[480px] p-6 sm:p-10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/20 relative z-10 my-8 mx-2">
+        <!-- UPGRADE: max-w diperbesar ke 520px untuk mencegah tab terjepit/memanjang ke bawah -->
+        <div class="bg-white/10 backdrop-blur-2xl w-full max-w-[520px] p-6 sm:p-10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/20 relative z-10 my-8 mx-2">
             <div id="apiWarning" class="hidden bg-red-500/20 border border-red-400 text-white p-3 rounded-xl mb-6 text-xs font-bold text-center backdrop-blur-md">
                 ⚠️ URL Google Apps Script belum diatur (GAS_URL)!
             </div>
@@ -217,9 +218,9 @@
             
             <!-- RESPONSIVE LOGIN TABS UPGRADE (IOS SEGMENTED CONTROL STYLE) -->
             <div class="grid grid-cols-3 gap-1 mb-8 bg-black/30 p-1.5 rounded-[1.25rem] border border-white/10 backdrop-blur-md relative z-20">
-                <button type="button" onclick="switchTab('staff')" id="tabStaff" class="w-full py-3 rounded-xl shadow-[0_4px_15px_rgb(0,0,0,0.12)] bg-white text-[10px] sm:text-xs font-black text-brand transition-all duration-300 outline-none transform scale-100 whitespace-nowrap">STAF MEDIS</button>
-                <button type="button" onclick="switchTab('pasien')" id="tabPasien" class="w-full py-3 rounded-xl text-[10px] sm:text-xs font-black text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300 outline-none bg-transparent transform scale-95 hover:scale-100 whitespace-nowrap">PASIEN</button>
-                <button type="button" onclick="switchTab('online')" id="tabOnline" class="w-full py-3 rounded-xl text-[10px] sm:text-xs font-black text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300 outline-none bg-transparent transform scale-95 hover:scale-100 whitespace-nowrap">DAFTAR</button>
+                <button type="button" onclick="switchTab('staff')" id="tabStaff" class="w-full py-3 rounded-xl shadow-[0_4px_15px_rgb(0,0,0,0.12)] bg-white text-[11px] sm:text-sm font-black text-brand transition-all duration-300 outline-none transform scale-100 whitespace-nowrap">STAF MEDIS</button>
+                <button type="button" onclick="switchTab('pasien')" id="tabPasien" class="w-full py-3 rounded-xl text-[11px] sm:text-sm font-black text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300 outline-none bg-transparent transform scale-95 hover:scale-100 whitespace-nowrap">PASIEN</button>
+                <button type="button" onclick="switchTab('online')" id="tabOnline" class="w-full py-3 rounded-xl text-[11px] sm:text-sm font-black text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300 outline-none bg-transparent transform scale-95 hover:scale-100 whitespace-nowrap">DAFTAR</button>
             </div>
             
             <!-- Login Staff -->
@@ -415,7 +416,7 @@
         let AppState = { user: null, charts: {}, isDisplayMode: false };
         window.printTicketData = null; 
         window.masterPoli = [];
-        window.masterStaff = []; // ARRAY BARU UNTUK DOKTER DINAMIS
+        window.masterStaff = []; 
         
         if(typeof window.antrianCounters === 'undefined') {
             window.antrianCounters = { loket: 1 };
@@ -640,8 +641,8 @@
             document.getElementById('formPasien').style.display = t === 'pasien' ? 'block' : 'none';
             document.getElementById('formOnline').style.display = t === 'online' ? 'block' : 'none';
             
-            const activeClass = 'w-full py-3 rounded-xl shadow-[0_4px_15px_rgb(0,0,0,0.12)] bg-white text-[10px] sm:text-xs font-black text-brand transition-all duration-300 outline-none transform scale-100 whitespace-nowrap';
-            const inactiveClass = 'w-full py-3 rounded-xl text-[10px] sm:text-xs font-black text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300 outline-none bg-transparent transform scale-95 hover:scale-100 whitespace-nowrap';
+            const activeClass = 'w-full py-3 rounded-xl shadow-[0_4px_15px_rgb(0,0,0,0.12)] bg-white text-[11px] sm:text-sm font-black text-brand transition-all duration-300 outline-none transform scale-100 whitespace-nowrap';
+            const inactiveClass = 'w-full py-3 rounded-xl text-[11px] sm:text-sm font-black text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300 outline-none bg-transparent transform scale-95 hover:scale-100 whitespace-nowrap';
             
             document.getElementById('tabStaff').className = t === 'staff' ? activeClass : inactiveClass;
             document.getElementById('tabPasien').className = t === 'pasien' ? activeClass : inactiveClass;
@@ -685,20 +686,25 @@
                 let rmVal = document.getElementById('p_rm').value.trim();
                 let rawDate = document.getElementById('p_dob').value;
                 
-                // Coba format asli dari HTML Date Picker (YYYY-MM-DD)
+                // Murni Bypass Ke Backend
+                // Backend V17.0 sudah memodifikasi tglLahir di dalamnya (split '-' dan mapping ulang)
+                // Kita berikan perlindungan Smart Retry (Brute Force 3 Format Tanggal) di sisi Client
+                
+                // 1. Coba Format Asli (YYYY-MM-DD dari Input Date HTML)
                 let res = await ZettBackend.call('loginPasien', rmVal, rawDate); 
                 
-                // Fallback otomatis (Smart Retry) jika format backend berbeda dengan browser
-                if(res && res.status === 'error' && res.message.includes('tidak cocok')) {
+                // 2. Fallback jika format "YYYY-MM-DD" gagal mencocokkan string di Backend
+                if(res && res.status === 'error') {
                     let parts = rawDate.split('-');
                     if(parts.length === 3) {
-                        // Coba format DD-MM-YYYY
+                        // Coba Format: DD-MM-YYYY
                         let fallbackDate1 = `${parts[2]}-${parts[1]}-${parts[0]}`;
                         let resFallback1 = await ZettBackend.call('loginPasien', rmVal, fallbackDate1);
+                        
                         if(resFallback1.status === 'success') {
                             res = resFallback1;
                         } else {
-                            // Coba format DD/MM/YYYY
+                            // Coba Format Terakhir: DD/MM/YYYY
                             let fallbackDate2 = `${parts[2]}/${parts[1]}/${parts[0]}`;
                             let resFallback2 = await ZettBackend.call('loginPasien', rmVal, fallbackDate2);
                             if(resFallback2.status === 'success') {
