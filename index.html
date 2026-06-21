@@ -65,11 +65,11 @@
         ::-webkit-scrollbar-track { background: transparent; } 
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-        /* Hide Scrollbar for Display Antrian */
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
+        /* Hide Scrollbar for Horizontal Sliders */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
         /* Inputs & Form Elements */
         .input-med { 
             width: 100%; padding: 12px 16px; 
@@ -113,7 +113,7 @@
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 26px; width: 26px; border-radius: 50%; background: #ef4444; cursor: pointer; margin-top: -9px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 3px solid white; } 
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 8px; cursor: pointer; background: #e2e8f0; border-radius: 4px; }
         
-        /* Fluid Typography for Antrian numbers */
+        /* Fluid Typography for Antrian numbers to fix scaling issues */
         .antrian-number {
             font-size: clamp(3.5rem, 6vw, 6.5rem);
             line-height: 1;
@@ -355,7 +355,7 @@
                 <button type="button" onclick="toggleSidebar()" class="p-2 text-slate-600 bg-white/50 rounded-lg"><i class="fas fa-bars text-lg"></i></button>
             </header>
             
-            <div class="flex-1 h-full overflow-hidden flex flex-col" id="workArea">
+            <div class="flex-1 h-full overflow-y-auto p-4 md:p-6 lg:p-8 xl:p-10 custom-scrollbar" id="workArea">
                 <!-- Modules Injected Here -->
             </div>
         </main>
@@ -417,8 +417,8 @@
             window.antrianList = [];
         }
         window.trackingInterval = null; 
-        window.adminAntrianInterval = null; 
-        window.scrollInterval = null; // Auto scroll for TV LCD
+        window.adminAntrianInterval = null;
+        window.scrollInterval = null;
 
         // INIT: Check Fullscreen Display Mode OR Auto Login
         window.onload = () => {
@@ -441,7 +441,7 @@
                 }
             });
 
-            // Mode Display LCD (TV Publik)
+            // Mode Display LCD
             if(urlParams.get('view') === 'display' || pathname.includes('displayantrian')) {
                 AppState.isDisplayMode = true;
                 document.getElementById('viewLogin').classList.add('hidden');
@@ -451,8 +451,8 @@
                 
                 // Adjust layout for full screen
                 const wa = document.getElementById('workArea');
-                wa.classList.remove('p-4', 'md:p-6', 'lg:p-8', 'xl:p-10', 'overflow-y-auto');
-                wa.classList.add('p-0', 'm-0', 'h-full', 'overflow-hidden');
+                wa.classList.remove('p-4', 'md:p-6', 'lg:p-8', 'xl:p-10');
+                wa.classList.add('p-0', 'm-0', 'h-full');
                 
                 loadView('antrian');
                 
@@ -526,6 +526,7 @@
                 const overlay = document.getElementById('ticketModalOverlay');
                 const card = document.getElementById('ticketModalCard');
                 
+                // Gunakan No Antrian ASLI dari server jika ada, jika tidak, hitung manual (fallback lama)
                 let queueNo = data.noAntrian || "N/A";
                 
                 document.getElementById('ticketQueueNo').innerText = queueNo;
@@ -559,6 +560,27 @@
                     window.history.replaceState({}, document.title, window.location.pathname); // Bersihkan parameter URL bersih
                 }, 300);
             }
+        };
+
+        window.startAutoScroll = () => {
+            window.stopAutoScroll();
+            const container = document.getElementById('antrianCardsContainer');
+            if(!container) return;
+
+            window.scrollInterval = setInterval(() => {
+                if(container.scrollWidth > container.clientWidth) {
+                    const cardWidth = container.children[0].offsetWidth + 32; 
+                    if (container.scrollLeft + container.clientWidth >= container.scrollWidth - 10) {
+                        container.scrollTo({ left: 0, behavior: 'smooth' });
+                    } else {
+                        container.scrollBy({ left: cardWidth, behavior: 'smooth' });
+                    }
+                }
+            }, 4000); 
+        };
+
+        window.stopAutoScroll = () => {
+            if(window.scrollInterval) clearInterval(window.scrollInterval);
         };
 
         function toggleSidebar() {
@@ -790,7 +812,7 @@
                 </div>`;
             }
             
-            html += `<p style="font-size:10px; margin-top:15px; font-weight:bold;">Terima Kasih Atas Kunjungan Anda</p>
+            html += `<p style="font-size:10px; margin:top:15px; font-weight:bold;">Terima Kasih Atas Kunjungan Anda</p>
             </div>`;
             
             pa.innerHTML = html;
@@ -814,7 +836,7 @@
             document.getElementById('liveTrackingCard')?.classList.add('hidden');
             if(window.trackingInterval) clearInterval(window.trackingInterval);
             if(window.adminAntrianInterval) clearInterval(window.adminAntrianInterval);
-            if(window.scrollInterval) clearInterval(window.scrollInterval);
+            stopAutoScroll();
             
             // Clear URL
             window.history.replaceState({}, document.title, window.location.pathname); 
@@ -870,31 +892,13 @@
                 }
             });
             
-            // Matikan Scroll Interval jika pindah view
-            if(window.scrollInterval) {
-                clearInterval(window.scrollInterval);
-                window.scrollInterval = null;
-            }
-            // Matikan interval admin jika pindah tab
-            if(window.adminAntrianInterval) {
-                clearInterval(window.adminAntrianInterval);
-                window.adminAntrianInterval = null;
-            }
-            
             const wa = document.getElementById('workArea');
-            wa.classList.remove('overflow-hidden');
-            wa.classList.add('overflow-y-auto'); // Default for other views
-            
-            if (vid === 'antrian' && AppState.isDisplayMode) {
-                wa.classList.remove('overflow-y-auto', 'p-4', 'md:p-6', 'lg:p-8', 'xl:p-10');
-                wa.classList.add('overflow-hidden', 'p-0', 'm-0');
-            } else if (vid === 'antrian') {
-                 wa.classList.remove('overflow-y-auto');
-                 wa.classList.add('overflow-hidden');
-            }
-
             wa.innerHTML = ''; 
             
+            // Matikan interval dan scroll jika pindah tab
+            if(window.adminAntrianInterval) clearInterval(window.adminAntrianInterval);
+            stopAutoScroll();
+
             try {
                 if(vid === 'dashboard') buildDashboard(wa);
                 else if(vid === 'frontdesk') buildFrontdesk(wa);
@@ -951,8 +955,8 @@
 
         function buildFrontdesk(container) {
             container.innerHTML = `
-                <div class="mb-8 p-4 md:p-6 lg:p-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Buat Registrasi Pasien</h2></div>
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 px-4 md:px-6 lg:px-8 pb-10">
+                <div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Buat Registrasi Pasien</h2></div>
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     <div class="lg:col-span-8 glass-card p-6 md:p-8 rounded-[2rem]">
                         <form onsubmit="submitDaftar(event)" id="fDaftar">
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
@@ -1090,8 +1094,8 @@
                         `}
                     </div>
                     
-                    <div class="flex-1 w-full overflow-hidden p-4 md:p-8 z-10 flex items-center relative">
-                        <div class="flex flex-row gap-6 md:gap-8 items-stretch w-full h-full overflow-x-auto snap-x snap-mandatory hide-scrollbar pb-2 pt-2" id="antrianCardsContainer">
+                    <div class="flex-1 overflow-y-auto p-4 md:p-8 z-10 w-full" style="${AppState.isDisplayMode ? 'display: flex; align-items: stretch;' : ''}">
+                        <div class="w-full" id="antrianCardsContainer">
                             <!-- Dynamic Cards will be injected here -->
                         </div>
                     </div>
@@ -1117,31 +1121,6 @@
                     clearInterval(window.adminAntrianInterval);
                 }
             }, 5000);
-
-            // Auto Scroll Loop (Marquee) khusus mode Display LCD
-            if(AppState.isDisplayMode) {
-                if(window.scrollInterval) clearInterval(window.scrollInterval);
-                window.scrollInterval = setInterval(() => {
-                    const container = document.getElementById('antrianCardsContainer');
-                    if(!container) return;
-                    
-                    // Cek apakah konten lebih lebar dari layar (butuh scroll)
-                    if(container.scrollWidth > container.clientWidth + 5) {
-                        const card = container.children[0];
-                        if(!card) return;
-                        
-                        // Lebar 1 kartu + gap
-                        const scrollStep = card.offsetWidth + 32; 
-                        
-                        // Jika sudah mentok kanan, kembali ke kiri
-                        if (container.scrollLeft + container.clientWidth >= container.scrollWidth - 10) {
-                            container.scrollTo({ left: 0, behavior: 'smooth' });
-                        } else {
-                            container.scrollBy({ left: scrollStep, behavior: 'smooth' });
-                        }
-                    }
-                }, 5000); // Geser setiap 5 detik
-            }
         }
 
         window.changeAntrian = async (type, amount) => {
@@ -1157,28 +1136,20 @@
             const container = document.getElementById('antrianCardsContainer');
             if(!container) return;
 
-            // Hanya tampilkan poli yang ada pasiennya hari ini
-            let activePoliNames = [...new Set(window.antrianList.map(a => a.poli))];
-            
-            // Ambil detail warna dan prefix dari Master Poli
-            let polis = window.masterPoli ? window.masterPoli.filter(p => activePoliNames.includes(p.nama)) : [];
-            
-            // Fallback jika API Master Poli gagal tapi ada antrian
-            if (polis.length === 0 && activePoliNames.length > 0) {
-                polis = activePoliNames.map((nama, idx) => ({
-                    nama: nama,
-                    prefix: String.fromCharCode(66 + idx),
-                    warna: idx % 2 === 0 ? 'green' : 'yellow'
-                }));
-            }
+            let polis = window.masterPoli && window.masterPoli.length > 0 ? window.masterPoli : [
+                {nama: 'Poli Umum', prefix: 'C', warna: 'green'}, 
+                {nama: 'Poli Gigi', prefix: 'B', warna: 'yellow'}
+            ];
+
+            // FILTER POLI KOSONG (Hanya tampilkan poli yang punya pasien terdaftar hari ini)
+            let activePolisList = polis.filter(pObj => {
+                return window.antrianList && window.antrianList.some(a => a.poli === pObj.nama);
+            });
 
             const loketNum = formatNumber(window.antrianCounters['loket'] || 1, 'A');
             
-            // Lebar Card Responsive
-            const cardWidthClass = "shrink-0 w-full md:w-[calc(50%-1.5rem)] lg:w-[calc(33.3333%-1.5rem)] snap-center";
-
             let html = `
-                <div class="${cardWidthClass} glass-card rounded-3xl border-t-[12px] md:border-t-[16px] border-slate-700 shadow-2xl flex flex-col bg-white overflow-hidden relative h-full min-h-[350px]">
+                <div class="glass-card rounded-3xl border-t-[12px] md:border-t-[16px] border-slate-700 shadow-2xl flex flex-col bg-white overflow-hidden relative h-full min-h-[350px]">
                     <h2 class="text-lg md:text-xl font-black text-slate-100 py-4 border-b border-slate-800 bg-slate-800 text-center shrink-0 tracking-wider">ANTRIAN LOKET</h2>
                     <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 relative">
                         <div class="flex items-center justify-between w-full mb-4 px-2 gap-2">
@@ -1198,8 +1169,9 @@
                 </div>
             `;
 
-            polis.forEach((pObj, idx) => {
+            activePolisList.forEach((pObj, idx) => {
                 const poli = pObj.nama;
+                const prefixAlpha = pObj.prefix;
                 const prefixColor = pObj.warna || 'blue';
                 const poliId = poli;
                 const safeId = poliId.replace(/\s+/g, '');
@@ -1237,7 +1209,7 @@
                 }
 
                 html += `
-                    <div class="${cardWidthClass} glass-card rounded-3xl border-t-[12px] md:border-t-[16px] border-${prefixColor}-500 shadow-2xl flex flex-col bg-white overflow-hidden relative h-full min-h-[350px]">
+                    <div class="glass-card rounded-3xl border-t-[12px] md:border-t-[16px] border-${prefixColor}-500 shadow-2xl flex flex-col bg-white overflow-hidden relative h-full min-h-[350px]">
                         <div class="absolute inset-0 bg-${prefixColor}-50/30 opacity-50 z-0 pointer-events-none"></div>
                         <h2 class="text-lg md:text-xl font-black text-white py-4 border-b border-${prefixColor}-600 bg-${prefixColor}-600 z-10 text-center shrink-0 uppercase tracking-wider">${poli}</h2>
                         <div class="flex-1 flex flex-col items-center justify-center p-4 z-10 w-full">
@@ -1262,6 +1234,19 @@
 
             container.innerHTML = html;
             if (document.getElementById('fdDispLoket')) document.getElementById('fdDispLoket').innerText = loketNum;
+            
+            // Slider / Grid Logic
+            if(AppState.isDisplayMode) {
+                container.className = "flex w-full gap-6 md:gap-8 overflow-x-auto no-scrollbar scroll-smooth transition-all duration-500 ease-in-out h-full items-stretch";
+                Array.from(container.children).forEach(child => {
+                    // Ensures that even if there are 5 cards, they take up 33% screen width max, allowing the rest to slide
+                    child.className += " flex-none w-[calc(100%-1.5rem)] md:w-[calc(50%-1.5rem)] lg:w-[calc(33.333%-1.5rem)]";
+                });
+                startAutoScroll();
+            } else {
+                container.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 items-start w-full";
+                stopAutoScroll();
+            }
         };
 
         window.fetchAntrianRealtime = async (silent = false, forceReset = false) => {
@@ -1362,8 +1347,8 @@
 
         async function buildRME(container) {
             container.innerHTML = `
-                <div class="mb-8 p-4 md:p-6 lg:p-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">RME & Odontogram</h2></div>
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 px-4 md:px-6 lg:px-8 pb-10">
+                <div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">RME & Odontogram</h2></div>
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     <!-- Left: API Queue -->
                     <div class="lg:col-span-4 space-y-6">
                         <div class="glass-card p-6 rounded-[2rem] border-t-8 border-brand">
@@ -1490,8 +1475,8 @@
 
         async function buildKasir(container) {
             container.innerHTML = `
-                <div class="mb-8 p-4 md:p-6 lg:p-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Kasir Pembayaran</h2></div>
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 px-4 md:px-6 lg:px-8 pb-10">
+                <div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Kasir Pembayaran</h2></div>
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     <div class="lg:col-span-4 glass-card p-6 rounded-[2rem] h-fit max-h-[80vh] overflow-y-auto custom-scrollbar border-t-8 border-yellow-400">
                         <h3 class="font-black text-slate-800 mb-6 text-sm border-b border-slate-200/50 pb-3 tracking-widest uppercase"><i class="fas fa-file-invoice-dollar mr-2 text-yellow-500 text-lg"></i> TAGIHAN AKTIF</h3>
                         <div id="kasirList" class="space-y-4">Memuat...</div>
@@ -1556,7 +1541,7 @@
 
         function buildLab(c) { 
             c.innerHTML = `
-            <div class="mb-8 p-4 md:p-6 lg:p-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Input Hasil Lab API</h2></div><div class="glass-card p-6 md:p-10 rounded-[2rem] max-w-3xl mx-auto border-t-8 border-purple-500 shadow-xl mb-10"><form onsubmit="submitLab(event)" id="fLab" class="space-y-6"><div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">ID Pendaftaran</label><input type="text" id="l_id" class="w-full p-4 border-2 border-slate-100 bg-white rounded-2xl focus:border-purple-500 outline-none font-bold text-slate-700 transition-colors" placeholder="REG-..." required></div><div class="bg-purple-50 p-6 md:p-8 rounded-[1.5rem] border border-purple-100 shadow-inner"><h4 class="font-black text-purple-900 mb-6 border-b border-purple-200 pb-3 text-lg">Parameter Hematologi</h4><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label class="text-xs font-black text-slate-600 mb-2 block">Hemoglobin (g/dL)</label><input type="number" step="0.1" id="l_hb" class="w-full p-4 border-2 border-transparent rounded-xl bg-white shadow-sm focus:border-purple-300 outline-none font-bold" required></div><div><label class="text-xs font-black text-slate-600 mb-2 block">Leukosit (ribu/uL)</label><input type="number" step="0.1" id="l_leuko" class="w-full p-4 border-2 border-transparent rounded-xl bg-white shadow-sm focus:border-purple-300 outline-none font-bold" required></div><div><label class="text-xs font-black text-slate-600 mb-2 block">Trombosit (ribu/uL)</label><input type="number" id="l_trombo" class="w-full p-4 border-2 border-transparent rounded-xl bg-white shadow-sm focus:border-purple-300 outline-none font-bold" required></div><div><label class="text-xs font-black text-slate-600 mb-2 block">Gula Darah Sewaktu</label><input type="number" id="l_gula" class="w-full p-4 border-2 border-yellow-300 bg-yellow-50 focus:bg-white focus:border-yellow-400 rounded-xl font-black outline-none" required></div></div></div><button type="submit" class="w-full bg-purple-600 text-white font-black tracking-widest py-4 rounded-2xl shadow-lg hover:bg-purple-700 transition-all text-lg transform hover:-translate-y-1"><i class="fas fa-cloud-upload-alt mr-2"></i> POST API & CETAK HASIL</button></form></div>`;
+            <div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Input Hasil Lab API</h2></div><div class="glass-card p-6 md:p-10 rounded-[2rem] max-w-3xl mx-auto border-t-8 border-purple-500 shadow-xl"><form onsubmit="submitLab(event)" id="fLab" class="space-y-6"><div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">ID Pendaftaran</label><input type="text" id="l_id" class="w-full p-4 border-2 border-slate-100 bg-white rounded-2xl focus:border-purple-500 outline-none font-bold text-slate-700 transition-colors" placeholder="REG-..." required></div><div class="bg-purple-50 p-6 md:p-8 rounded-[1.5rem] border border-purple-100 shadow-inner"><h4 class="font-black text-purple-900 mb-6 border-b border-purple-200 pb-3 text-lg">Parameter Hematologi</h4><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label class="text-xs font-black text-slate-600 mb-2 block">Hemoglobin (g/dL)</label><input type="number" step="0.1" id="l_hb" class="w-full p-4 border-2 border-transparent rounded-xl bg-white shadow-sm focus:border-purple-300 outline-none font-bold" required></div><div><label class="text-xs font-black text-slate-600 mb-2 block">Leukosit (ribu/uL)</label><input type="number" step="0.1" id="l_leuko" class="w-full p-4 border-2 border-transparent rounded-xl bg-white shadow-sm focus:border-purple-300 outline-none font-bold" required></div><div><label class="text-xs font-black text-slate-600 mb-2 block">Trombosit (ribu/uL)</label><input type="number" id="l_trombo" class="w-full p-4 border-2 border-transparent rounded-xl bg-white shadow-sm focus:border-purple-300 outline-none font-bold" required></div><div><label class="text-xs font-black text-slate-600 mb-2 block">Gula Darah Sewaktu</label><input type="number" id="l_gula" class="w-full p-4 border-2 border-yellow-300 bg-yellow-50 focus:bg-white focus:border-yellow-400 rounded-xl font-black outline-none" required></div></div></div><button type="submit" class="w-full bg-purple-600 text-white font-black tracking-widest py-4 rounded-2xl shadow-lg hover:bg-purple-700 transition-all text-lg transform hover:-translate-y-1"><i class="fas fa-cloud-upload-alt mr-2"></i> POST API & CETAK HASIL</button></form></div>`;
         }
         window.submitLab = async (e) => { 
             e.preventDefault(); const p = { idDaftar: document.getElementById('l_id').value, hb: document.getElementById('l_hb').value, leuko: document.getElementById('l_leuko').value, trombo: document.getElementById('l_trombo').value, gula: document.getElementById('l_gula').value, kolesterol: 0, petugas: AppState.user?.name || 'Analis' }; 
@@ -1622,7 +1607,7 @@
 
         function buildSurat(container) {
             container.innerHTML = `
-            <div class="mb-8 p-4 md:p-6 lg:p-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Penerbitan Surat Medis (API)</h2></div><div class="glass-card p-6 md:p-10 rounded-[2rem] max-w-2xl mx-auto border-t-8 border-brand shadow-xl mb-10"><form onsubmit="submitSurat(event)" id="fSurat" class="space-y-6"><div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">No RM Pasien</label><input type="text" id="s_rm" class="w-full p-4 border-2 border-slate-100 bg-white rounded-2xl uppercase focus:border-brand outline-none font-bold transition-colors" required></div><div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Jenis Surat</label><select id="s_tipe" class="w-full p-4 border-2 border-slate-100 bg-white rounded-2xl focus:border-brand outline-none font-bold cursor-pointer transition-colors" onchange="toggleFormSurat(this.value)"><option value="Sakit">Surat Sakit (Izin Istirahat)</option><option value="Sehat">Surat Keterangan Sehat</option><option value="Rujukan">Surat Rujukan RS / Eksternal</option></select></div><div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Keterangan Detail</label><textarea id="s_ket" class="w-full p-4 border-2 border-slate-100 bg-slate-50 rounded-2xl focus:border-brand outline-none resize-none font-bold text-slate-700 transition-colors" rows="4" required placeholder="Contoh: Mohon diberikan izin istirahat selama 3 hari karena kondisi medis..."></textarea></div><button type="submit" class="w-full bg-brand text-white font-black tracking-widest py-4 rounded-2xl shadow-lg hover:bg-branddark transition-all transform hover:-translate-y-1 text-lg"><i class="fas fa-cloud-upload-alt mr-2"></i> POST API & CETAK</button></form></div>`;
+            <div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Penerbitan Surat Medis (API)</h2></div><div class="glass-card p-6 md:p-10 rounded-[2rem] max-w-2xl mx-auto border-t-8 border-brand shadow-xl"><form onsubmit="submitSurat(event)" id="fSurat" class="space-y-6"><div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">No RM Pasien</label><input type="text" id="s_rm" class="w-full p-4 border-2 border-slate-100 bg-white rounded-2xl uppercase focus:border-brand outline-none font-bold transition-colors" required></div><div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Jenis Surat</label><select id="s_tipe" class="w-full p-4 border-2 border-slate-100 bg-white rounded-2xl focus:border-brand outline-none font-bold cursor-pointer transition-colors" onchange="toggleFormSurat(this.value)"><option value="Sakit">Surat Sakit (Izin Istirahat)</option><option value="Sehat">Surat Keterangan Sehat</option><option value="Rujukan">Surat Rujukan RS / Eksternal</option></select></div><div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Keterangan Detail</label><textarea id="s_ket" class="w-full p-4 border-2 border-slate-100 bg-slate-50 rounded-2xl focus:border-brand outline-none resize-none font-bold text-slate-700 transition-colors" rows="4" required placeholder="Contoh: Mohon diberikan izin istirahat selama 3 hari karena kondisi medis..."></textarea></div><button type="submit" class="w-full bg-brand text-white font-black tracking-widest py-4 rounded-2xl shadow-lg hover:bg-branddark transition-all transform hover:-translate-y-1 text-lg"><i class="fas fa-cloud-upload-alt mr-2"></i> POST API & CETAK</button></form></div>`;
         }
         window.submitSurat = async (e) => { 
             e.preventDefault(); const p = { noRM: document.getElementById('s_rm').value, tipe: document.getElementById('s_tipe').value, keterangan: document.getElementById('s_ket').value, dokter: AppState.user?.name || 'Dokter' }; 
@@ -1653,7 +1638,7 @@
         };
 
         function buildConsent(container) {
-            container.innerHTML = `<div class="mb-8 p-4 md:p-6 lg:p-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Informed Consent API</h2></div><div class="glass-card p-6 md:p-10 rounded-[2rem] max-w-2xl mx-auto shadow-xl mb-10"><div class="bg-blue-50 p-5 rounded-2xl mb-8 border border-blue-100 shadow-inner"><p class="text-sm text-blue-900 text-justify font-bold leading-relaxed">"Saya memahami dan menyetujui dilakukannya tindakan medis sesuai dengan Standar Operasional Prosedur (SOP) klinik, setelah mendapat penjelasan komprehensif mengenai risiko dan manfaat dari dokter penanggung jawab."</p></div><div class="mb-6"><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">No RM Pasien / NIK Wali</label><input type="text" id="ic_rm" placeholder="Contoh: RM-2601-0001" class="w-full p-4 border-2 border-slate-100 bg-slate-50 rounded-2xl uppercase outline-none focus:bg-white focus:border-brand font-bold transition-colors"></div><div class="mb-8"><label class="block text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-3">Tanda Tangan Digital (Base64 API)</label><div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm relative group"><canvas id="signatureCanvas" width="500" height="200" class="w-full h-auto bg-slate-50 rounded-xl"></canvas><button type="button" onclick="document.getElementById('signatureCanvas').getContext('2d').clearRect(0,0,500,200)" class="absolute top-5 right-5 bg-white/90 backdrop-blur border border-gray-200 text-slate-500 hover:text-red-500 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-colors"><i class="fas fa-eraser mr-1"></i> Hapus</button></div></div><button onclick="submitConsent()" class="w-full bg-medgreen-600 text-white font-black tracking-widest py-4 rounded-2xl shadow-lg hover:bg-medgreen-700 transition-all transform hover:-translate-y-1 text-lg"><i class="fas fa-cloud-upload-alt mr-2"></i> POST API PERSETUJUAN</button></div>`;
+            container.innerHTML = `<div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Informed Consent API</h2></div><div class="glass-card p-6 md:p-10 rounded-[2rem] max-w-2xl mx-auto shadow-xl"><div class="bg-blue-50 p-5 rounded-2xl mb-8 border border-blue-100 shadow-inner"><p class="text-sm text-blue-900 text-justify font-bold leading-relaxed">"Saya memahami dan menyetujui dilakukannya tindakan medis sesuai dengan Standar Operasional Prosedur (SOP) klinik, setelah mendapat penjelasan komprehensif mengenai risiko dan manfaat dari dokter penanggung jawab."</p></div><div class="mb-6"><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">No RM Pasien / NIK Wali</label><input type="text" id="ic_rm" placeholder="Contoh: RM-2601-0001" class="w-full p-4 border-2 border-slate-100 bg-slate-50 rounded-2xl uppercase outline-none focus:bg-white focus:border-brand font-bold transition-colors"></div><div class="mb-8"><label class="block text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-3">Tanda Tangan Digital (Base64 API)</label><div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm relative group"><canvas id="signatureCanvas" width="500" height="200" class="w-full h-auto bg-slate-50 rounded-xl"></canvas><button type="button" onclick="document.getElementById('signatureCanvas').getContext('2d').clearRect(0,0,500,200)" class="absolute top-5 right-5 bg-white/90 backdrop-blur border border-gray-200 text-slate-500 hover:text-red-500 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-colors"><i class="fas fa-eraser mr-1"></i> Hapus</button></div></div><button onclick="submitConsent()" class="w-full bg-medgreen-600 text-white font-black tracking-widest py-4 rounded-2xl shadow-lg hover:bg-medgreen-700 transition-all transform hover:-translate-y-1 text-lg"><i class="fas fa-cloud-upload-alt mr-2"></i> POST API PERSETUJUAN</button></div>`;
             const cvs = document.getElementById('signatureCanvas'); const ctx = cvs.getContext('2d'); ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.strokeStyle = '#1e3a8a'; let draw = false;
             const pos = (e) => { const r = cvs.getBoundingClientRect(); const sX = cvs.width / r.width; const sY = cvs.height / r.height; const x = e.touches ? e.touches[0].clientX : e.clientX; const y = e.touches ? e.touches[0].clientY : e.clientY; return { x: (x - r.left) * sX, y: (y - r.top) * sY }; };
             const start = (e) => { e.preventDefault(); draw = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }; const move = (e) => { e.preventDefault(); if(!draw) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
@@ -1672,8 +1657,8 @@
 
         async function buildFarmasi(container) {
             container.innerHTML = `
-                <div class="mb-8 p-4 md:p-6 lg:p-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Apotek & Farmasi (API)</h2></div>
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 px-4 md:px-6 lg:px-8 pb-10">
+                <div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Apotek & Farmasi (API)</h2></div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <div class="glass-card p-6 md:p-8 rounded-[2rem] h-fit max-h-[85vh] overflow-y-auto custom-scrollbar border-t-8 border-brand">
                         <h3 class="font-black mb-6 text-brand text-xl tracking-tight flex items-center"><i class="fas fa-search mr-3 text-xl"></i> API Search Stok</h3>
                         <div class="flex gap-3 mb-6"><input type="text" id="searchObatInput" placeholder="Ketik nama obat..." class="flex-1 p-4 border-2 border-slate-100 bg-white rounded-2xl outline-none focus:border-brand font-bold transition-colors"><button type="button" onclick="cariObat()" class="bg-brand text-white px-6 rounded-2xl shadow-lg hover:bg-branddark transition-colors"><i class="fas fa-search text-xl"></i></button></div>
@@ -1704,8 +1689,8 @@
         // H. MANAJEMEN POLI (DINAMIS UNTUK SUPER ADMIN)
         async function buildPoli(container) {
             container.innerHTML = `
-                <div class="mb-8 p-4 md:p-6 lg:p-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Manajemen Poli & Ruangan</h2></div>
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 px-4 md:px-6 lg:px-8 pb-10">
+                <div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Manajemen Poli & Ruangan</h2></div>
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     <div class="lg:col-span-4 glass-card p-6 md:p-8 rounded-[2rem] border-t-8 border-brand h-fit">
                         <h3 class="font-black mb-6 text-brand text-xl tracking-tight flex items-center"><i class="fas fa-layer-group mr-3"></i> Tambah Poli Baru</h3>
                         <form onsubmit="submitPoli(event)" id="fPoli" class="space-y-4">
