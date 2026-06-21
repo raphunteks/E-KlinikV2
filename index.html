@@ -113,7 +113,7 @@
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 26px; width: 26px; border-radius: 50%; background: #ef4444; cursor: pointer; margin-top: -9px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 3px solid white; } 
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 8px; cursor: pointer; background: #e2e8f0; border-radius: 4px; }
         
-        /* Fluid Typography for Antrian numbers */
+        /* Fluid Typography for Antrian numbers to fix scaling issues */
         .antrian-number {
             font-size: clamp(3.5rem, 6vw, 6.5rem);
             line-height: 1;
@@ -215,10 +215,11 @@
                 <p class="text-xs font-black text-blue-200 mt-1 uppercase tracking-widest drop-shadow-sm">Klinik Utama</p>
             </div>
             
-            <div class="flex mb-8 bg-black/20 p-1.5 rounded-[1.25rem] border border-white/10 backdrop-blur-sm relative z-20">
-                <button type="button" onclick="switchTab('staff')" id="tabStaff" class="flex-1 py-3.5 rounded-xl shadow-lg bg-white/90 text-xs md:text-sm font-black text-brand transition-all outline-none">STAF MEDIS</button>
-                <button type="button" onclick="switchTab('pasien')" id="tabPasien" class="flex-1 py-3.5 rounded-xl text-xs md:text-sm font-black text-white/60 hover:text-white transition-all outline-none bg-transparent">PASIEN</button>
-                <button type="button" onclick="switchTab('online')" id="tabOnline" class="flex-1 py-3.5 rounded-xl text-xs md:text-sm font-black text-white/60 hover:text-white transition-all outline-none bg-transparent">DAFTAR</button>
+            <!-- RESPONSIVE LOGIN TABS UPGRADE -->
+            <div class="flex flex-col sm:flex-row gap-2 mb-8 bg-black/20 p-2 rounded-2xl border border-white/10 backdrop-blur-md relative z-20">
+                <button type="button" onclick="switchTab('staff')" id="tabStaff" class="w-full sm:flex-1 py-3.5 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] bg-white text-xs md:text-sm font-black text-brand transition-all duration-300 outline-none transform scale-100">STAF MEDIS</button>
+                <button type="button" onclick="switchTab('pasien')" id="tabPasien" class="w-full sm:flex-1 py-3.5 rounded-xl text-xs md:text-sm font-black text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300 outline-none bg-transparent transform scale-95 hover:scale-100">PASIEN</button>
+                <button type="button" onclick="switchTab('online')" id="tabOnline" class="w-full sm:flex-1 py-3.5 rounded-xl text-xs md:text-sm font-black text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300 outline-none bg-transparent transform scale-95 hover:scale-100">DAFTAR</button>
             </div>
             
             <!-- Login Staff -->
@@ -256,8 +257,11 @@
                             <div><label class="text-slate-500">Gender *</label><select id="o_jk" class="input-med !bg-slate-50 border-slate-200 !text-slate-700"><option>Laki-Laki</option><option>Perempuan</option></select></div>
                         </div>
                         <div><label class="text-slate-500">No HP / WhatsApp *</label><input type="tel" id="o_hp" class="input-med !bg-slate-50 border-slate-200 !text-slate-700" required></div>
-                        <div><label class="text-slate-500">Poli Tujuan *</label><select id="o_poli" class="input-med !bg-slate-50 border-slate-200 !text-slate-700"></select></div>
-                        <div><label class="text-slate-500">Dokter Tujuan *</label><select id="o_dokter" class="input-med !bg-slate-50 border-slate-200 !text-slate-700"><option>drg. Hj. Kurniawaty, Sp.KG</option><option>dr. Arsyad, Sp.U</option><option>drg. Andi Rifka Rahmayanti, S.KG</option></select></div>
+                        
+                        <!-- DYNAMIC DOKTER UPDATE -->
+                        <div><label class="text-slate-500">Poli Tujuan *</label><select id="o_poli" class="input-med !bg-slate-50 border-slate-200 !text-slate-700" onchange="updateDokterList(this.value, 'o_dokter')"></select></div>
+                        <div><label class="text-slate-500">Dokter Tujuan *</label><select id="o_dokter" class="input-med !bg-slate-50 border-slate-200 !text-slate-700"><option value="">Pilih Poli Terlebih Dahulu</option></select></div>
+                        
                         <div><label class="text-slate-500">Keluhan</label><textarea id="o_keluhan" class="input-med !bg-slate-50 border-slate-200 !text-slate-700 resize-none" rows="2"></textarea></div>
 
                         <button type="submit" class="w-full bg-brand text-white font-black py-4 rounded-xl hover:bg-branddark transition-transform hover:-translate-y-1 mt-6 shadow-lg shadow-brand/30 tracking-widest">DAFTAR SEKARANG</button>
@@ -411,6 +415,7 @@
         let AppState = { user: null, charts: {}, isDisplayMode: false };
         window.printTicketData = null; 
         window.masterPoli = [];
+        window.masterStaff = []; // ARRAY BARU UNTUK DOKTER DINAMIS
         
         if(typeof window.antrianCounters === 'undefined') {
             window.antrianCounters = { loket: 1 };
@@ -447,6 +452,11 @@
             const urlParams = new URLSearchParams(window.location.search);
             const pathname = window.location.pathname;
             
+            // Mengarahkan dari URL portal-pasien kembali ke origin jika tidak login
+            if(pathname.includes('/portal-pasien')) {
+                window.history.replaceState({}, '', '/');
+            }
+
             // CEK TRACKING URL PARAMETER DARI BARCODE (Langsung Verifikasi Bypass Polling)
             if(urlParams.get('track')) {
                 const trackToken = urlParams.get('track');
@@ -455,7 +465,13 @@
                 return; // Stop eksekusi agar tetap di layar depan
             }
             
-            // Initial fetch to get masterPoli early
+            // Tarik Master Poli dan Master Staff di background
+            ZettBackend.call('getStaffList').then(res => {
+                if(res && res.status === 'success' && res.data) {
+                    window.masterStaff = res.data;
+                }
+            });
+
             ZettBackend.call('getAntrianAktif').then(res => {
                 if(res && res.status === 'success' && res.masterPoli) {
                     window.masterPoli = res.masterPoli;
@@ -502,12 +518,29 @@
             }
         };
 
+        // --- UPDATE DOKTER DINAMIS ---
+        window.updateDokterList = (poliValue, targetId) => {
+            const targetEl = document.getElementById(targetId);
+            if(!targetEl) return;
+            const dokters = window.masterStaff.filter(s => s.role === 'Dokter' && s.status === 'Aktif' && (s.poli === poliValue || s.poli === 'Semua Poli' || s.poli === '-'));
+            if(dokters.length > 0) {
+                targetEl.innerHTML = dokters.map(d => `<option value="${d.nama}">${d.nama}</option>`).join('');
+            } else {
+                targetEl.innerHTML = '<option value="-">Belum Ada Dokter (Menunggu)</option>';
+            }
+        };
+
         function populatePoliDropdowns() {
             const polis = window.masterPoli || [];
             if(polis.length === 0) return;
             const options = polis.map(p => `<option value="${p.nama}">${p.nama}</option>`).join('');
-            if(document.getElementById('r_poli')) document.getElementById('r_poli').innerHTML = options;
-            if(document.getElementById('o_poli')) document.getElementById('o_poli').innerHTML = options;
+            
+            const rPoli = document.getElementById('r_poli');
+            if(rPoli) { rPoli.innerHTML = options; updateDokterList(rPoli.value, 'r_dokter'); }
+            
+            const oPoli = document.getElementById('o_poli');
+            if(oPoli) { oPoli.innerHTML = options; updateDokterList(oPoli.value, 'o_dokter'); }
+            
             if(document.getElementById('st_poli')) document.getElementById('st_poli').innerHTML = `<option value="-">- (Non Poli)</option>` + options;
         }
         
@@ -579,7 +612,7 @@
                 overlay.classList.add('opacity-0'); card.classList.remove('scale-100'); card.classList.add('scale-95'); 
                 setTimeout(() => { 
                     overlay.classList.add('hidden'); 
-                    window.history.replaceState({}, document.title, window.location.pathname); // Bersihkan parameter URL
+                    window.history.replaceState({}, document.title, window.location.pathname); // Bersihkan parameter URL bersih
                 }, 300);
             }
         };
@@ -597,9 +630,9 @@
             document.getElementById('formPasien').style.display = t === 'pasien' ? 'block' : 'none';
             document.getElementById('formOnline').style.display = t === 'online' ? 'block' : 'none';
             
-            document.getElementById('tabStaff').className = t==='staff'?'flex-1 py-3.5 rounded-[0.75rem] shadow-sm bg-white/90 text-xs md:text-sm font-black text-brand transition-all outline-none':'flex-1 py-3.5 rounded-[0.75rem] text-xs md:text-sm font-black text-white/60 hover:text-white transition-all outline-none bg-transparent';
-            document.getElementById('tabPasien').className = t==='pasien'?'flex-1 py-3.5 rounded-[0.75rem] shadow-sm bg-white/90 text-xs md:text-sm font-black text-brand transition-all outline-none':'flex-1 py-3.5 rounded-[0.75rem] text-xs md:text-sm font-black text-white/60 hover:text-white transition-all outline-none bg-transparent';
-            document.getElementById('tabOnline').className = t==='online'?'flex-1 py-3.5 rounded-[0.75rem] shadow-sm bg-white/90 text-xs md:text-sm font-black text-brand transition-all outline-none':'flex-1 py-3.5 rounded-[0.75rem] text-xs md:text-sm font-black text-white/60 hover:text-white transition-all outline-none bg-transparent';
+            document.getElementById('tabStaff').className = t==='staff'?'w-full sm:flex-1 py-3.5 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] bg-white text-xs md:text-sm font-black text-brand transition-all duration-300 outline-none transform scale-100':'w-full sm:flex-1 py-3.5 rounded-xl text-xs md:text-sm font-black text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300 outline-none bg-transparent transform scale-95 hover:scale-100';
+            document.getElementById('tabPasien').className = t==='pasien'?'w-full sm:flex-1 py-3.5 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] bg-white text-xs md:text-sm font-black text-brand transition-all duration-300 outline-none transform scale-100':'w-full sm:flex-1 py-3.5 rounded-xl text-xs md:text-sm font-black text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300 outline-none bg-transparent transform scale-95 hover:scale-100';
+            document.getElementById('tabOnline').className = t==='online'?'w-full sm:flex-1 py-3.5 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] bg-white text-xs md:text-sm font-black text-brand transition-all duration-300 outline-none transform scale-100':'w-full sm:flex-1 py-3.5 rounded-xl text-xs md:text-sm font-black text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300 outline-none bg-transparent transform scale-95 hover:scale-100';
         }
 
         function toggleOnlineRM(val) {
@@ -638,6 +671,9 @@
             try {
                 const res = await ZettBackend.call('loginPasien', document.getElementById('p_rm').value, document.getElementById('p_dob').value);
                 if(res && res.status === 'success' && res.pasien) {
+                    // Update URL agar terkesan modern tanpa reload
+                    window.history.pushState({}, '', '/portal-pasien');
+
                     document.getElementById('viewLogin').classList.add('opacity-0', 'scale-[0.95]', 'pointer-events-none');
                     setTimeout(() => {
                         document.getElementById('viewLogin').classList.add('hidden');
@@ -840,7 +876,7 @@
             if(typeof window.stopAutoScroll === 'function') window.stopAutoScroll();
             
             // Clear URL
-            window.history.replaceState({}, document.title, window.location.pathname); 
+            window.history.replaceState({}, document.title, '/'); 
         }
         
         function logoutPasien() { 
@@ -851,7 +887,7 @@
             if(window.trackingInterval) clearInterval(window.trackingInterval);
             
             // Clear URL
-            window.history.replaceState({}, document.title, window.location.pathname); 
+            window.history.replaceState({}, document.title, '/'); 
         }
 
         // --- 4. SPA ROUTER ---
@@ -975,8 +1011,8 @@
                                 </div>
                                 <div class="space-y-5">
                                     <h4 class="font-black text-brand text-sm border-b border-slate-200/50 pb-3 uppercase tracking-widest"><i class="fas fa-stethoscope mr-2"></i> Data Kunjungan</h4>
-                                    <div><label>Poli Tujuan *</label><select id="r_poli" class="input-med"></select></div>
-                                    <div><label>Dokter Spesialis Tujuan *</label><select id="r_dokter" class="input-med"><option>drg. Hj. Kurniawaty, Sp.KG</option><option>dr. Arsyad, Sp.U</option><option>drg. Andi Rifka Rahmayanti, S.KG</option></select></div>
+                                    <div><label>Poli Tujuan *</label><select id="r_poli" class="input-med" onchange="updateDokterList(this.value, 'r_dokter')"></select></div>
+                                    <div><label>Dokter Spesialis Tujuan *</label><select id="r_dokter" class="input-med"><option value="">Pilih Poli Terlebih Dahulu</option></select></div>
                                     <div><label>Pembiayaan</label><select id="r_biaya" class="input-med"><option>PRIBADI</option><option>BPJS KESEHATAN</option><option>ASURANSI LAIN</option></select></div>
                                     <div><label>Keluhan Utama</label><textarea id="r_keluhan" class="input-med resize-none" rows="3"></textarea></div>
                                     <div class="pt-6">
