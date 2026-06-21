@@ -109,7 +109,7 @@
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 26px; width: 26px; border-radius: 50%; background: #ef4444; cursor: pointer; margin-top: -9px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 3px solid white; } 
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 8px; cursor: pointer; background: #e2e8f0; border-radius: 4px; }
         
-        /* Fluid Typography for Antrian numbers to fix scaling issues */
+        /* Fluid Typography for Antrian numbers */
         .antrian-number {
             font-size: clamp(3.5rem, 6vw, 6.5rem);
             line-height: 1;
@@ -175,7 +175,7 @@
             <p class="text-base font-black text-slate-700 bg-blue-50 px-4 py-2 rounded-xl inline-block border border-blue-100" id="ticketPoli">Poli Umum</p>
             
             <div class="mt-6 border-t border-dashed border-slate-300 pt-4">
-                <p class="text-sm font-black text-slate-800" id="ticketPasien">Nama Pasien</p>
+                <p class="text-sm font-black text-slate-800 break-words whitespace-normal leading-tight" id="ticketPasien">Nama Pasien</p>
                 <p class="text-[10px] font-bold text-slate-400 font-mono mt-1" id="ticketRM">RM-XXXX</p>
             </div>
             
@@ -252,7 +252,7 @@
                             <div><label class="text-slate-500">Gender *</label><select id="o_jk" class="input-med !bg-slate-50 border-slate-200 !text-slate-700"><option>Laki-Laki</option><option>Perempuan</option></select></div>
                         </div>
                         <div><label class="text-slate-500">No HP / WhatsApp *</label><input type="tel" id="o_hp" class="input-med !bg-slate-50 border-slate-200 !text-slate-700" required></div>
-                        <div><label class="text-slate-500">Poli Tujuan *</label><select id="o_poli" class="input-med !bg-slate-50 border-slate-200 !text-slate-700"><option>Poli Umum</option><option>Poli Gigi</option><option>IGD</option></select></div>
+                        <div><label class="text-slate-500">Poli Tujuan *</label><select id="o_poli" class="input-med !bg-slate-50 border-slate-200 !text-slate-700"></select></div>
                         <div><label class="text-slate-500">Dokter Tujuan *</label><select id="o_dokter" class="input-med !bg-slate-50 border-slate-200 !text-slate-700"><option>drg. Hj. Kurniawaty, Sp.KG</option><option>dr. Arsyad, Sp.U</option><option>drg. Andi Rifka Rahmayanti, S.KG</option></select></div>
                         <div><label class="text-slate-500">Keluhan</label><textarea id="o_keluhan" class="input-med !bg-slate-50 border-slate-200 !text-slate-700 resize-none" rows="2"></textarea></div>
 
@@ -386,6 +386,8 @@
                 else if (funcName === 'searchObatBackend') { dataPayload = { keyword: args[0] }; }
                 else if (funcName === 'getRiwayatCPPT') { dataPayload = { noRM: args[0] }; }
                 else if (funcName === 'updateAntrian') { dataPayload = { idDaftar: args[0], statusBaru: args[1] }; }
+                else if (funcName === 'updateLoket') { dataPayload = { val: args[0] }; }
+                else if (funcName === 'deletePoli') { dataPayload = { id: args[0] }; }
                 else if (args.length > 0 && typeof args[0] === 'object') { dataPayload = args[0]; }
 
                 try {
@@ -404,11 +406,14 @@
 
         let AppState = { user: null, charts: {}, isDisplayMode: false };
         window.printTicketData = null; 
+        window.masterPoli = [];
+        
         if(typeof window.antrianCounters === 'undefined') {
-            window.antrianCounters = { loket: 1, poliUmum: 1, poliGigi: 1 };
+            window.antrianCounters = { loket: 1 };
             window.antrianList = [];
         }
         window.trackingInterval = null; 
+        window.adminAntrianInterval = null; // Khusus Admin
 
         // INIT: Check Fullscreen Display Mode OR Auto Login
         window.onload = () => {
@@ -418,11 +423,20 @@
             // CEK TRACKING URL PARAMETER DARI BARCODE (Langsung Verifikasi Bypass Polling)
             if(urlParams.get('track')) {
                 const trackToken = urlParams.get('track');
+                document.getElementById('track_token').value = trackToken;
                 startLiveTracking(trackToken);
                 return; // Stop eksekusi agar tetap di layar depan
             }
             
-            // Mode Display LCD
+            // Initial fetch to get masterPoli early
+            ZettBackend.call('getAntrianAktif').then(res => {
+                if(res && res.status === 'success' && res.masterPoli) {
+                    window.masterPoli = res.masterPoli;
+                    populatePoliDropdowns();
+                }
+            });
+
+            // Mode Display LCD (TV Publik)
             if(urlParams.get('view') === 'display' || pathname.includes('displayantrian')) {
                 AppState.isDisplayMode = true;
                 document.getElementById('viewLogin').classList.add('hidden');
@@ -439,7 +453,7 @@
                 
                 // Auto sync every 5 seconds for display mode silently
                 setInterval(() => {
-                    fetchAntrianRealtime(true);
+                    fetchAntrianRealtime(true, false);
                 }, 5000);
             } else {
                 // Auto Login check
@@ -460,6 +474,15 @@
                 }
             }
         };
+
+        function populatePoliDropdowns() {
+            const polis = window.masterPoli || [];
+            if(polis.length === 0) return;
+            const options = polis.map(p => `<option value="${p.nama}">${p.nama}</option>`).join('');
+            if(document.getElementById('r_poli')) document.getElementById('r_poli').innerHTML = options;
+            if(document.getElementById('o_poli')) document.getElementById('o_poli').innerHTML = options;
+            if(document.getElementById('st_poli')) document.getElementById('st_poli').innerHTML = `<option value="-">- (Non Poli)</option>` + options;
+        }
         
         // --- 2. GLOBAL UI HELPER ---
         const UI = {
@@ -498,7 +521,6 @@
                 const overlay = document.getElementById('ticketModalOverlay');
                 const card = document.getElementById('ticketModalCard');
                 
-                // Gunakan No Antrian ASLI dari server jika ada, jika tidak, hitung manual (fallback lama)
                 let queueNo = data.noAntrian || "N/A";
                 
                 document.getElementById('ticketQueueNo').innerText = queueNo;
@@ -786,6 +808,7 @@
             document.getElementById('workArea').innerHTML = ''; 
             document.getElementById('liveTrackingCard')?.classList.add('hidden');
             if(window.trackingInterval) clearInterval(window.trackingInterval);
+            if(window.adminAntrianInterval) clearInterval(window.adminAntrianInterval);
             
             // Clear URL
             window.history.replaceState({}, document.title, window.location.pathname); 
@@ -813,6 +836,7 @@
             { id: 'consent', label: 'Informed Consent', icon: 'fa-file-signature', roles: ['Super Admin', 'Dokter', 'Frontdesk'] },
             { id: 'farmasi', label: 'Farmasi & Dispense', icon: 'fa-pills', roles: ['Super Admin', 'Apoteker'] },
             { id: 'surat', label: 'Surat Keterangan', icon: 'fa-envelope-open-text', roles: ['Super Admin', 'Dokter', 'Frontdesk'] },
+            { id: 'poli', label: 'Manajemen Poli', icon: 'fa-layer-group', roles: ['Super Admin'] },
             { id: 'staff', label: '+ Manajemen Staff', icon: 'fa-user-md', roles: ['Super Admin'] } 
         ];
 
@@ -843,6 +867,9 @@
             const wa = document.getElementById('workArea');
             wa.innerHTML = ''; 
             
+            // Matikan interval admin jika pindah tab
+            if(window.adminAntrianInterval) clearInterval(window.adminAntrianInterval);
+
             try {
                 if(vid === 'dashboard') buildDashboard(wa);
                 else if(vid === 'frontdesk') buildFrontdesk(wa);
@@ -853,6 +880,7 @@
                 else if(vid === 'consent') buildConsent(wa);
                 else if(vid === 'farmasi') buildFarmasi(wa);
                 else if(vid === 'surat') buildSurat(wa);
+                else if(vid === 'poli') buildPoli(wa);
                 else if(vid === 'staff') buildStaff(wa);
             } catch(e) {
                 console.error("View Builder Error:", e);
@@ -917,7 +945,7 @@
                                 </div>
                                 <div class="space-y-5">
                                     <h4 class="font-black text-brand text-sm border-b border-slate-200/50 pb-3 uppercase tracking-widest"><i class="fas fa-stethoscope mr-2"></i> Data Kunjungan</h4>
-                                    <div><label>Poli Tujuan *</label><select id="r_poli" class="input-med"><option>Poli Umum</option><option>Poli Gigi</option><option>IGD</option></select></div>
+                                    <div><label>Poli Tujuan *</label><select id="r_poli" class="input-med"></select></div>
                                     <div><label>Dokter Spesialis Tujuan *</label><select id="r_dokter" class="input-med"><option>drg. Hj. Kurniawaty, Sp.KG</option><option>dr. Arsyad, Sp.U</option><option>drg. Andi Rifka Rahmayanti, S.KG</option></select></div>
                                     <div><label>Pembiayaan</label><select id="r_biaya" class="input-med"><option>PRIBADI</option><option>BPJS KESEHATAN</option><option>ASURANSI LAIN</option></select></div>
                                     <div><label>Keluhan Utama</label><textarea id="r_keluhan" class="input-med resize-none" rows="3"></textarea></div>
@@ -935,7 +963,7 @@
                         <div id="fdQueueList" class="space-y-4 text-sm">Memuat...</div>
                         
                         <div class="mt-8 pt-6 border-t border-slate-200/50">
-                            <h3 class="font-black text-slate-800 text-xs tracking-widest uppercase mb-4 text-center">Kontrol Pemanggilan Manual</h3>
+                            <h3 class="font-black text-slate-800 text-xs tracking-widest uppercase mb-4 text-center">Kontrol Pendaftaran Loket Awal</h3>
                             <div class="bg-white/50 backdrop-blur border border-white p-4 rounded-2xl shadow-sm flex flex-col items-center">
                                 <div class="flex items-center justify-center w-full gap-3 mb-4">
                                     <button type="button" onclick="changeAntrian('loket', -1)" class="shrink-0 w-12 h-12 bg-white text-medblue-600 rounded-full text-2xl font-black hover:bg-medblue-50 shadow-md border border-slate-100 flex items-center justify-center transition-transform active:scale-95"><i class="fas fa-minus"></i></button>
@@ -944,12 +972,13 @@
                                     </div>
                                     <button type="button" onclick="changeAntrian('loket', 1)" class="shrink-0 w-12 h-12 bg-white text-medblue-600 rounded-full text-2xl font-black hover:bg-medblue-50 shadow-md border border-slate-100 flex items-center justify-center transition-transform active:scale-95"><i class="fas fa-plus"></i></button>
                                 </div>
-                                <button type="button" onclick="panggilAudio(document.getElementById('fdDispLoket').innerText, 'Loket Pendaftaran', document.getElementById('namaLoket')?.innerText)" class="w-full bg-slate-800 text-white py-3.5 rounded-xl font-black shadow-lg hover:bg-slate-900 transition-all active:scale-95 tracking-widest text-xs"><i class="fas fa-volume-up mr-2"></i> PANGGIL LOKET</button>
+                                <button type="button" onclick="panggilAudio(document.getElementById('fdDispLoket').innerText, 'Loket Pendaftaran', '')" class="w-full bg-slate-800 text-white py-3.5 rounded-xl font-black shadow-lg hover:bg-slate-900 transition-all active:scale-95 tracking-widest text-xs"><i class="fas fa-volume-up mr-2"></i> PANGGIL LOKET</button>
                             </div>
                         </div>
                     </div>
                 </div>
             `;
+            populatePoliDropdowns();
             loadFrontdeskQueue();
             updateDisplayAntrian();
         }
@@ -971,30 +1000,40 @@
             const list = document.getElementById('fdQueueList'); list.innerHTML = '<div class="text-center p-6"><i class="fas fa-circle-notch fa-spin text-brand text-2xl"></i></div>';
             try {
                 const res = await ZettBackend.call('getAntrianAktif');
-                if(res && res.status==='success' && Array.isArray(res.data)) {
-                    if(res.data.length === 0) list.innerHTML = '<div class="text-center p-6 border-2 border-dashed border-slate-200 rounded-2xl font-bold text-slate-400">Antrian kosong</div>';
-                    else {
-                        list.innerHTML = res.data.map(d => `
-                        <div class="p-4 border border-white bg-white/50 backdrop-blur rounded-2xl shadow-sm">
-                            <div class="flex justify-between items-center mb-2">
-                                <span class="font-black text-slate-800 text-base truncate pr-2">${d.nama}</span>
-                                <span class="text-[10px] font-black text-white bg-slate-800 px-2 py-1 rounded tracking-widest shrink-0">${d.tipe}</span>
-                            </div>
-                            <p class="text-[11px] font-mono font-bold text-brand bg-blue-50/50 inline-block px-2 py-1 rounded">No: ${d.noAntrian || 'N/A'} | ${d.idDaftar}</p>
-                            <div class="flex justify-between items-center mt-3 pt-3 border-t border-slate-200/50">
-                                <span class="text-xs font-black text-slate-500 uppercase tracking-widest">${d.status}</span> 
-                                <div class="flex gap-2">
-                                    <button onclick="reprintTicket('${d.idDaftar}', '${d.noRM}', '${d.nama}', '${d.poli}', '${d.noAntrian || ''}', '${d.idDaftar}')" class="bg-blue-100 text-brand px-2.5 py-1.5 rounded-lg hover:bg-brand hover:text-white transition-colors shadow-sm" title="Cetak Antrian"><i class="fas fa-print"></i></button>
-                                    <select onchange="ubahStatusAntrian('${d.idDaftar}', this.value)" class="text-[11px] p-2 rounded-lg border border-slate-200 font-bold outline-none cursor-pointer bg-white">
-                                        <option value="">Ubah Status</option>
-                                        <option value="Selesai RME">Selesai</option>
-                                        <option value="Batal">Batal</option>
-                                    </select>
+                if(res && res.status==='success') {
+                    if(res.masterPoli) {
+                        window.masterPoli = res.masterPoli;
+                        populatePoliDropdowns();
+                    }
+                    if(res.loket) {
+                        window.antrianCounters['loket'] = parseInt(res.loket);
+                    }
+
+                    if(Array.isArray(res.data)) {
+                        if(res.data.length === 0) list.innerHTML = '<div class="text-center p-6 border-2 border-dashed border-slate-200 rounded-2xl font-bold text-slate-400">Antrian kosong</div>';
+                        else {
+                            list.innerHTML = res.data.map(d => `
+                            <div class="p-4 border border-white bg-white/50 backdrop-blur rounded-2xl shadow-sm">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="font-black text-slate-800 text-base truncate pr-2">${d.nama}</span>
+                                    <span class="text-[10px] font-black text-white bg-slate-800 px-2 py-1 rounded tracking-widest shrink-0">${d.tipe}</span>
                                 </div>
-                            </div>
-                        </div>`).join('');
-                        window.antrianList = res.data.reverse(); 
-                        updateDisplayAntrian(); 
+                                <p class="text-[11px] font-mono font-bold text-brand bg-blue-50/50 inline-block px-2 py-1 rounded">No: ${d.noAntrian || 'N/A'} | ${d.idDaftar}</p>
+                                <div class="flex justify-between items-center mt-3 pt-3 border-t border-slate-200/50">
+                                    <span class="text-xs font-black text-slate-500 uppercase tracking-widest">${d.status}</span> 
+                                    <div class="flex gap-2">
+                                        <button onclick="reprintTicket('${d.idDaftar}', '${d.noRM}', '${d.nama}', '${d.poli}', '${d.noAntrian || ''}', '${d.idDaftar}')" class="bg-blue-100 text-brand px-2.5 py-1.5 rounded-lg hover:bg-brand hover:text-white transition-colors shadow-sm" title="Cetak Antrian"><i class="fas fa-print"></i></button>
+                                        <select onchange="ubahStatusAntrian('${d.idDaftar}', this.value)" class="text-[11px] p-2 rounded-lg border border-slate-200 font-bold outline-none cursor-pointer bg-white">
+                                            <option value="">Ubah Status</option>
+                                            <option value="Selesai RME">Selesai</option>
+                                            <option value="Batal">Batal</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>`).join('');
+                            window.antrianList = res.data.reverse(); 
+                            updateDisplayAntrian(); 
+                        }
                     }
                 }
             } catch (e) { list.innerHTML = 'Error fetching queue'; }
@@ -1020,7 +1059,7 @@
                         </div>
                         ${AppState.isDisplayMode ? '' : `
                         <div class="flex gap-3 admin-control flex-wrap justify-center mt-4 md:mt-0">
-                            <button type="button" onclick="fetchAntrianRealtime()" class="bg-white/20 hover:bg-white/30 text-white font-bold px-4 py-2.5 rounded-xl text-xs tracking-widest transition-colors border border-white/30 shadow-sm"><i class="fas fa-sync-alt mr-2"></i> SYNC</button>
+                            <button type="button" onclick="fetchAntrianRealtime(false, true)" class="bg-white/20 hover:bg-white/30 text-white font-bold px-4 py-2.5 rounded-xl text-xs tracking-widest transition-colors border border-white/30 shadow-sm"><i class="fas fa-sync-alt mr-2"></i> SYNC</button>
                             <a href="/displayantrian" target="_blank" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold px-4 py-2.5 rounded-xl text-xs tracking-widest transition-colors shadow-sm flex items-center"><i class="fas fa-expand mr-2"></i> BUKA LCD</a>
                         </div>
                         `}
@@ -1036,16 +1075,31 @@
             `;
             
             if(typeof window.antrianCounters === 'undefined') {
-                window.antrianCounters = { loket: 1, "Poli Umum": 1, "Poli Gigi": 1, "IGD": 1 };
+                window.antrianCounters = { loket: 1 };
                 window.antrianList = [];
             }
             
-            fetchAntrianRealtime();
+            // Force reset on first load of this tab
+            fetchAntrianRealtime(false, true);
+
+            // Interval untuk auto refresh halaman admin agar se-realtime TV
+            if(window.adminAntrianInterval) clearInterval(window.adminAntrianInterval);
+            window.adminAntrianInterval = setInterval(() => {
+                if(document.getElementById('antrianCardsContainer')) {
+                    // silent true, forceReset false agar override manual tidak ke reset otomatis kecuali status pasiennya berubah
+                    fetchAntrianRealtime(true, false);
+                } else {
+                    clearInterval(window.adminAntrianInterval);
+                }
+            }, 5000);
         }
 
-        window.changeAntrian = (type, amount) => {
+        window.changeAntrian = async (type, amount) => {
             window.antrianCounters[type] = Math.max(1, (window.antrianCounters[type] || 1) + amount);
             updateDisplayAntrian();
+            if(type === 'loket') {
+                await ZettBackend.call('updateLoket', window.antrianCounters['loket']);
+            }
         };
 
         window.updateDisplayAntrian = () => {
@@ -1053,33 +1107,38 @@
             const container = document.getElementById('antrianCardsContainer');
             if(!container) return;
 
-            let activePolis = [];
-            if(window.antrianList && window.antrianList.length > 0) {
-                 activePolis = [...new Set(window.antrianList.filter(a => a.status === 'Menunggu' || a.status === 'Selesai RME').map(item => item.poli))];
-            }
-            if(activePolis.length === 0) activePolis = ["Poli Umum"]; // Fallback 
+            let polis = window.masterPoli && window.masterPoli.length > 0 ? window.masterPoli : [
+                {nama: 'Poli Umum', prefix: 'C', warna: 'green'}, 
+                {nama: 'Poli Gigi', prefix: 'B', warna: 'yellow'}
+            ];
 
             const loketNum = formatNumber(window.antrianCounters['loket'] || 1, 'A');
             
             let html = `
-                <div class="glass-card rounded-3xl border-t-[12px] md:border-t-[16px] border-slate-700 shadow-2xl flex flex-col bg-white overflow-hidden relative h-full">
+                <div class="glass-card rounded-3xl border-t-[12px] md:border-t-[16px] border-slate-700 shadow-2xl flex flex-col bg-white overflow-hidden relative h-full min-h-[350px]">
                     <h2 class="text-lg md:text-xl font-black text-slate-100 py-4 border-b border-slate-800 bg-slate-800 text-center shrink-0 tracking-wider">ANTRIAN LOKET</h2>
                     <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 relative">
-                        <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-4">
-                            ${AppState.isDisplayMode ? '' : `<button type="button" onclick="changeAntrian('loket', -1)" class="shrink-0 w-10 h-10 md:w-14 md:h-14 bg-white text-slate-800 rounded-full text-2xl font-black hover:bg-slate-100 shadow-md border border-slate-200 flex items-center justify-center transition-transform active:scale-95"><i class="fas fa-minus"></i></button>`}
-                            <div class="bg-slate-50 px-2 py-6 rounded-2xl shadow-inner border border-slate-200 flex-1 text-center flex items-center justify-center min-h-[120px] w-full">
+                        <div class="flex items-center justify-between w-full mb-4 px-2 gap-2">
+                            ${AppState.isDisplayMode ? '<div class="w-10 h-10 md:w-14 md:h-14 shrink-0"></div>' : `<button type="button" onclick="changeAntrian('loket', -1)" class="shrink-0 w-10 h-10 md:w-14 md:h-14 bg-white text-slate-800 rounded-full text-2xl font-black hover:bg-slate-100 shadow-md border border-slate-200 flex items-center justify-center transition-transform active:scale-95"><i class="fas fa-minus"></i></button>`}
+                            
+                            <div class="bg-slate-50 px-2 py-4 rounded-2xl shadow-inner border border-slate-200 flex-1 text-center flex items-center justify-center min-h-[120px] w-full max-w-[200px] mx-auto">
                                 <h1 class="antrian-number font-black text-slate-800 tracking-tighter" id="dispLoket">${loketNum}</h1>
                             </div>
-                            ${AppState.isDisplayMode ? '' : `<button type="button" onclick="changeAntrian('loket', 1)" class="shrink-0 w-10 h-10 md:w-14 md:h-14 bg-white text-slate-800 rounded-full text-2xl font-black hover:bg-slate-100 shadow-md border border-slate-200 flex items-center justify-center transition-transform active:scale-95"><i class="fas fa-plus"></i></button>`}
+                            
+                            ${AppState.isDisplayMode ? '<div class="w-10 h-10 md:w-14 md:h-14 shrink-0"></div>' : `<button type="button" onclick="changeAntrian('loket', 1)" class="shrink-0 w-10 h-10 md:w-14 md:h-14 bg-white text-slate-800 rounded-full text-2xl font-black hover:bg-slate-100 shadow-md border border-slate-200 flex items-center justify-center transition-transform active:scale-95"><i class="fas fa-plus"></i></button>`}
                         </div>
-                        <p class="text-sm md:text-lg font-black text-slate-500 w-full text-center px-2 leading-tight">Panggilan Pendaftaran Awal</p>
+                        <div class="flex items-center justify-center w-full min-h-[48px] px-2 mb-2">
+                            <p class="text-sm md:text-lg font-black text-slate-500 text-center break-words whitespace-normal leading-tight w-full">Panggilan Pendaftaran Awal</p>
+                        </div>
                     </div>
                     ${AppState.isDisplayMode ? '' : `<button type="button" class="mt-auto shrink-0 bg-slate-900 text-white p-5 font-black tracking-widest uppercase cursor-pointer hover:bg-black transition-colors text-sm w-full" onclick="panggilAudio(document.getElementById('dispLoket').innerText, 'Loket Pendaftaran', '')"><i class="fas fa-volume-up mr-2"></i> PANGGIL LOKET</button>`}
                 </div>
             `;
 
-            activePolis.forEach((poli, idx) => {
-                const prefixColor = idx % 2 === 0 ? 'green' : 'yellow';
+            polis.forEach((pObj, idx) => {
+                const poli = pObj.nama;
+                const prefixAlpha = pObj.prefix;
+                const prefixColor = pObj.warna || 'blue';
                 const poliId = poli;
                 const safeId = poliId.replace(/\s+/g, '');
                 
@@ -1119,16 +1178,20 @@
                     <div class="glass-card rounded-3xl border-t-[12px] md:border-t-[16px] border-${prefixColor}-500 shadow-2xl flex flex-col bg-white overflow-hidden relative h-full min-h-[350px]">
                         <div class="absolute inset-0 bg-${prefixColor}-50/30 opacity-50 z-0 pointer-events-none"></div>
                         <h2 class="text-lg md:text-xl font-black text-white py-4 border-b border-${prefixColor}-600 bg-${prefixColor}-600 z-10 text-center shrink-0 uppercase tracking-wider">${poli}</h2>
-                        <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 z-10">
-                            <div class="flex items-center justify-center w-full gap-2 md:gap-4 mb-4">
-                                ${AppState.isDisplayMode ? '' : `<button type="button" onclick="changeAntrian('${poliId}', -1)" class="shrink-0 w-10 h-10 md:w-14 md:h-14 bg-white text-${prefixColor}-600 rounded-full text-2xl font-black hover:bg-${prefixColor}-50 shadow-md border border-slate-200 flex items-center justify-center transition-transform active:scale-95"><i class="fas fa-minus"></i></button>`}
-                                <div class="bg-white px-2 py-6 rounded-2xl shadow-inner border border-slate-100 flex-1 text-center flex items-center justify-center min-h-[120px] w-full">
+                        <div class="flex-1 flex flex-col items-center justify-center p-4 z-10 w-full">
+                            <div class="flex items-center justify-between w-full mb-4 px-2 gap-2">
+                                ${AppState.isDisplayMode ? '<div class="w-10 h-10 md:w-14 md:h-14 shrink-0"></div>' : `<button type="button" onclick="changeAntrian('${poliId}', -1)" class="shrink-0 w-10 h-10 md:w-14 md:h-14 bg-white text-${prefixColor}-600 rounded-full text-2xl font-black hover:bg-${prefixColor}-50 shadow-md border border-slate-200 flex items-center justify-center transition-transform active:scale-95"><i class="fas fa-minus"></i></button>`}
+                                
+                                <div class="bg-white px-2 py-4 rounded-2xl shadow-inner border border-slate-100 flex-1 text-center flex items-center justify-center min-h-[120px] w-full max-w-[200px] mx-auto">
                                     <h1 class="antrian-number font-black text-${prefixColor==='green'?'brand':'yellow-600'} drop-shadow-sm tracking-tighter" id="disp_${safeId}">${poliNum}</h1>
                                 </div>
-                                ${AppState.isDisplayMode ? '' : `<button type="button" onclick="changeAntrian('${poliId}', 1)" class="shrink-0 w-10 h-10 md:w-14 md:h-14 bg-white text-${prefixColor}-600 rounded-full text-2xl font-black hover:bg-${prefixColor}-50 shadow-md border border-slate-200 flex items-center justify-center transition-transform active:scale-95"><i class="fas fa-plus"></i></button>`}
+                                
+                                ${AppState.isDisplayMode ? '<div class="w-10 h-10 md:w-14 md:h-14 shrink-0"></div>' : `<button type="button" onclick="changeAntrian('${poliId}', 1)" class="shrink-0 w-10 h-10 md:w-14 md:h-14 bg-white text-${prefixColor}-600 rounded-full text-2xl font-black hover:bg-${prefixColor}-50 shadow-md border border-slate-200 flex items-center justify-center transition-transform active:scale-95"><i class="fas fa-plus"></i></button>`}
                             </div>
-                            <p class="text-base md:text-xl font-black text-slate-800 w-full text-center px-2 leading-tight min-h-[3rem] flex items-center justify-center" id="nama_${safeId}">${namaPoli}</p>
-                            <p class="text-[10px] md:text-xs font-bold text-${prefixColor}-800 mt-2 bg-${prefixColor}-100 px-4 py-1.5 rounded-full border border-${prefixColor}-200 shadow-sm inline-block text-center" id="dok_${safeId}">${dokPoli}</p>
+                            <div class="flex items-center justify-center w-full min-h-[48px] px-2 mb-2">
+                                <p class="text-sm md:text-xl font-black text-slate-800 text-center break-words whitespace-normal leading-tight w-full" id="nama_${safeId}">${namaPoli}</p>
+                            </div>
+                            <p class="text-[10px] md:text-xs font-bold text-${prefixColor}-800 mt-1 bg-${prefixColor}-100 px-4 py-1.5 rounded-full border border-${prefixColor}-200 shadow-sm inline-block text-center" id="dok_${safeId}">${dokPoli}</p>
                         </div>
                         ${AppState.isDisplayMode ? '' : `<button type="button" class="mt-auto shrink-0 bg-slate-800 text-white p-5 font-black tracking-widest uppercase z-10 cursor-pointer hover:bg-${prefixColor}-700 transition-colors text-sm w-full group-hover:shadow-[0_-10px_20px_rgba(32,68,152,0.3)]" onclick="panggilAudio(document.getElementById('disp_${safeId}').innerText, '${poli}', document.getElementById('nama_${safeId}').innerText)"><i class="fas fa-volume-up mr-2"></i> PANGGIL</button>`}
                     </div>
@@ -1139,15 +1202,55 @@
             if (document.getElementById('fdDispLoket')) document.getElementById('fdDispLoket').innerText = loketNum;
         };
 
-        window.fetchAntrianRealtime = async (silent = false) => {
+        window.fetchAntrianRealtime = async (silent = false, forceReset = false) => {
             try {
                 if(!silent && !AppState.isDisplayMode) UI.loader(true, 'Sinkronisasi Realtime...');
                 const res = await ZettBackend.call('getAntrianAktif');
                 if(!silent && !AppState.isDisplayMode) UI.loader(false);
-                if(res && res.status==='success' && Array.isArray(res.data)) {
-                    window.antrianList = res.data.reverse(); 
-                    updateDisplayAntrian();
-                    if(!silent && !AppState.isDisplayMode) UI.toast('Data Antrian Tersinkronisasi');
+                if(res && res.status==='success') {
+                    if(res.masterPoli) {
+                        window.masterPoli = res.masterPoli;
+                    }
+                    if(res.loket) {
+                        if(AppState.isDisplayMode || forceReset) {
+                            window.antrianCounters['loket'] = parseInt(res.loket);
+                        }
+                    }
+                    if(Array.isArray(res.data)) {
+                        window.antrianList = res.data.reverse(); 
+                        
+                        // AUTO ADVANCE LOGIC: Memaksa override kontrol manual Admin jika pasien tsb bukan lagi berstatus "Menunggu"
+                        if(!AppState.isDisplayMode) {
+                            let polis = window.masterPoli || [];
+                            polis.forEach(pObj => {
+                                const poli = pObj.nama;
+                                const poliAntrian = window.antrianList.filter(a => a.poli === poli);
+                                poliAntrian.sort((a,b) => (a.noAntrian || "").localeCompare(b.noAntrian || ""));
+                                
+                                let activeIndex = poliAntrian.findIndex(a => a.status === 'Menunggu');
+                                if(activeIndex === -1) {
+                                    activeIndex = poliAntrian.length > 0 ? poliAntrian.length - 1 : 0;
+                                }
+                                
+                                let currentIndex = (window.antrianCounters[poli] || 1) - 1;
+                                
+                                if (forceReset) {
+                                    window.antrianCounters[poli] = activeIndex + 1;
+                                } else if (poliAntrian.length > 0 && currentIndex >= 0 && currentIndex < poliAntrian.length) {
+                                    // Jika Admin sedang memonitor pasien yg statusnya BERUBAH dari "Menunggu" ke "Selesai RME"
+                                    // Maka otomatis meloncat maju
+                                    if (poliAntrian[currentIndex].status !== 'Menunggu' && activeIndex > currentIndex) {
+                                        window.antrianCounters[poli] = activeIndex + 1;
+                                    }
+                                } else if (!window.antrianCounters[poli] || window.antrianCounters[poli] > poliAntrian.length) {
+                                    window.antrianCounters[poli] = activeIndex + 1;
+                                }
+                            });
+                        }
+                        
+                        updateDisplayAntrian();
+                    }
+                    if(!silent && !AppState.isDisplayMode && forceReset) UI.toast('Data Antrian Sinkron (Reset ke Posisi Realtime)');
                 }
             } catch(e) { if(!silent && !AppState.isDisplayMode) UI.loader(false); }
         };
@@ -1158,7 +1261,7 @@
             
             const splitNomor = nomor.split('').map(c => c === '-' ? ' ' : c).join(' ');
             let text = `Mohon perhatian. Panggilan kepada nomor antrian, ${splitNomor}. `;
-            if(nama && nama !== "Hamba Allah" && nama !== "Nama Pasien" && nama !== "") text += `Atas nama, Bapak atau Ibu, ${nama}. `;
+            if(nama && nama !== "Hamba Allah" && nama !== "Nama Pasien" && nama !== "Tidak Ada Antrian") text += `Atas nama, Bapak atau Ibu, ${nama}. `;
             if(poli !== "") text += `Dimohon untuk segera menuju ke, ${poli}.`; 
             text += ` Terima kasih.`;
 
@@ -1536,45 +1639,78 @@
         window.cariObat = async () => { const kw = document.getElementById('searchObatInput').value; const c = document.getElementById('hasilCariObat'); c.innerHTML = '<div class="text-center p-8"><i class="fas fa-circle-notch fa-spin text-medblue-400 text-3xl"></i></div>'; try { const res = await ZettBackend.call('searchObatBackend', kw); if(res && res.status === 'success') { if(!res.data || res.data.length === 0) c.innerHTML = '<div class="bg-red-50 text-red-600 p-4 rounded-xl text-center font-black border border-red-100">Obat tidak ditemukan di API.</div>'; else c.innerHTML = res.data.map(o => `<div class="p-4 border-2 rounded-2xl flex justify-between items-center transition-all hover:shadow-md ${o.stok <= o.min ? 'bg-red-50/80 border-red-200' : 'bg-white/80 backdrop-blur-sm border-slate-100 hover:border-brand'}"><div><p class="font-black text-slate-800 text-lg">${o.nama}</p><p class="text-[10px] text-slate-400 mt-1 font-mono">${o.id} | <span class="bg-slate-100 px-2 py-1 rounded font-bold">${o.kategori}</span></p><p class="text-sm mt-2 font-black">Stok: <span class="${o.stok <= o.min ? 'text-red-600 bg-red-100 px-2 py-0.5 rounded-lg':'text-medgreen-600'}">${o.stok}</span></p></div><button type="button" onclick="document.getElementById('f_id').value='${o.id}'" class="bg-blue-50 text-brand hover:bg-brand hover:text-white px-5 py-3 rounded-xl text-sm font-black transition-colors shadow-sm">Pilih</button></div>`).join(''); } } catch(err) { c.innerHTML='<div class="text-center p-4 font-bold text-red-500">API Server Error</div>'; } };
         window.submitDispense = async (e) => { e.preventDefault(); const idObat = document.getElementById('f_id').value; if(!idObat) return UI.toast('Pilih obat dari tabel kiri!', true); let dArr = []; if(document.getElementById('d_pagi').checked) dArr.push('Pagi'); if(document.getElementById('d_siang').checked) dArr.push('Siang'); if(document.getElementById('d_sore').checked) dArr.push('Malam'); const p = { idObat: idObat, qty: document.getElementById('f_qty').value, dosis: dArr.length ? dArr.join(', ') : 'Sesuai Anjuran', apoteker: AppState.user?.name || 'Apoteker' }; UI.loader(true, 'POST API Dispense...'); try { const res = await ZettBackend.call('dispenseObat', p); UI.loader(false); if(res && res.status==='success') { UI.customAlert('DISPENSE BERHASIL', 'Stok obat berhasil dikurangi dan dicatat dalam log Farmasi.'); cariObat(); document.getElementById('f_qty').value=''; document.getElementById('f_id').value=''; } else UI.toast(res?.message || 'Error', true); } catch(err) { UI.loader(false); UI.toast('API Fetch Error', true); } };
 
-        // G. STAFF MANAGEMENT (NEW)
-        async function buildStaff(container) {
+        // H. MANAJEMEN POLI (DINAMIS UNTUK SUPER ADMIN)
+        async function buildPoli(container) {
             container.innerHTML = `
-                <div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Manajemen Staff & Dokter</h2></div>
+                <div class="mb-8"><h2 class="text-3xl font-black text-slate-800 tracking-tight">Manajemen Poli & Ruangan</h2></div>
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     <div class="lg:col-span-4 glass-card p-6 md:p-8 rounded-[2rem] border-t-8 border-brand h-fit">
-                        <h3 class="font-black mb-6 text-brand text-xl tracking-tight flex items-center"><i class="fas fa-user-plus mr-3"></i> Tambah Staff Baru</h3>
-                        <form onsubmit="submitStaff(event)" id="fStaff" class="space-y-4">
-                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Nama Lengkap / Gelar *</label><input type="text" id="st_nama" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-bold text-slate-700" required placeholder="Cth: dr. Budi, Sp.A"></div>
-                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Username *</label><input type="text" id="st_user" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-bold text-slate-700" required></div>
-                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Password *</label><input type="password" id="st_pass" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-bold text-slate-700" required></div>
-                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Role / Akses *</label><select id="st_role" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-bold text-slate-700"><option>Dokter</option><option>Frontdesk</option><option>Kasir</option><option>Apoteker</option><option>Analis Lab</option><option>Super Admin</option></select></div>
-                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Poli Spesifik</label><select id="st_poli" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-bold text-slate-700"><option value="-">- (Non Poli)</option><option value="Poli Umum">Poli Umum</option><option value="Poli Gigi">Poli Gigi</option></select></div>
-                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Jenjang Pendidikan</label><input type="text" id="st_pendidikan" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-bold text-slate-700" placeholder="Cth: Spesialis Anak"></div>
-                            <button type="submit" class="w-full bg-brand text-white font-black tracking-widest py-4 rounded-2xl shadow-lg hover:bg-branddark transition-all mt-6"><i class="fas fa-save mr-2"></i> SIMPAN STAFF</button>
+                        <h3 class="font-black mb-6 text-brand text-xl tracking-tight flex items-center"><i class="fas fa-layer-group mr-3"></i> Tambah Poli Baru</h3>
+                        <form onsubmit="submitPoli(event)" id="fPoli" class="space-y-4">
+                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Nama Poli *</label><input type="text" id="pl_nama" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-bold text-slate-700" required placeholder="Cth: Poli Anak"></div>
+                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Huruf Prefix Antrian *</label><input type="text" id="pl_prefix" maxlength="1" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-black text-slate-700 uppercase" required placeholder="Cth: E"></div>
+                            <div><label class="text-xs font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Warna Tema UI *</label>
+                                <select id="pl_warna" class="w-full p-4 border border-slate-200 rounded-2xl bg-white focus:border-brand outline-none transition-all font-bold text-slate-700">
+                                    <option value="blue">Biru (Blue)</option>
+                                    <option value="green">Hijau (Green)</option>
+                                    <option value="yellow">Kuning (Yellow)</option>
+                                    <option value="red">Merah (Red)</option>
+                                    <option value="purple">Ungu (Purple)</option>
+                                    <option value="pink">Merah Muda (Pink)</option>
+                                    <option value="indigo">Indigo</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="w-full bg-brand text-white font-black tracking-widest py-4 rounded-2xl shadow-lg hover:bg-branddark transition-all mt-6"><i class="fas fa-save mr-2"></i> SIMPAN POLI</button>
                         </form>
                     </div>
-                    <div class="lg:col-span-8 glass-card p-6 md:p-8 rounded-[2rem] border-t-8 border-medgreen-500 overflow-y-auto max-h-[85vh] custom-scrollbar">
-                        <h3 class="font-black mb-6 text-medgreen-800 text-xl tracking-tight flex items-center"><i class="fas fa-users mr-3"></i> Daftar Staff Aktif</h3>
-                        <div class="overflow-x-auto"><table class="w-full med-table"><thead><tr><th>ID</th><th>Nama Staff & Poli</th><th>Role</th><th>Pendidikan</th><th>Status</th></tr></thead><tbody id="tblStaff"><tr><td colspan="5" class="text-center">Memuat...</td></tr></tbody></table></div>
+                    <div class="lg:col-span-8 glass-card p-6 md:p-8 rounded-[2rem] border-t-8 border-medblue-500 overflow-y-auto max-h-[85vh] custom-scrollbar">
+                        <h3 class="font-black mb-6 text-medblue-800 text-xl tracking-tight flex items-center"><i class="fas fa-list mr-3"></i> Daftar Poli Aktif</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full med-table">
+                                <thead><tr><th>ID Poli</th><th>Nama Poli</th><th>Prefix</th><th>Warna Tema</th><th>Aksi</th></tr></thead>
+                                <tbody id="tblPoli"><tr><td colspan="5" class="text-center p-6 text-slate-400">Memuat...</td></tr></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             `;
-            loadStaffList();
+            loadPoliListLocal();
         }
-        window.loadStaffList = async () => {
-            const tb = document.getElementById('tblStaff'); tb.innerHTML = '<tr><td colspan="5" class="text-center p-6 text-slate-400"><i class="fas fa-spinner fa-spin text-2xl text-brand"></i></td></tr>';
-            try {
-                const res = await ZettBackend.call('getStaffList');
-                if(res && res.status === 'success' && Array.isArray(res.data)) {
-                    if(res.data.length === 0) tb.innerHTML = '<tr><td colspan="5" class="text-center p-6 text-slate-400 font-bold">Belum ada staff</td></tr>';
-                    else tb.innerHTML = res.data.map(s => `<tr><td class="font-mono text-xs text-slate-400">${s.id}</td><td class="font-bold text-slate-800">${s.nama} <br><span class="text-[9px] text-brand uppercase">${s.username} | ${s.poli}</span></td><td><span class="bg-blue-50 text-brand px-2 py-1 rounded text-xs font-bold">${s.role}</span></td><td class="text-xs text-slate-600 font-bold">${s.pendidikan || '-'}</td><td><span class="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest">${s.status}</span></td></tr>`).join('');
-                }
-            } catch(e) { tb.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 font-bold p-6">Error Fetching Data</td></tr>'; }
+        
+        function loadPoliListLocal() {
+            const tb = document.getElementById('tblPoli');
+            if(!window.masterPoli || window.masterPoli.length === 0) {
+                tb.innerHTML = '<tr><td colspan="5" class="text-center p-6 text-slate-400 font-bold">Belum ada poli (Data ditarik saat Sinkronisasi)</td></tr>';
+                return;
+            }
+            tb.innerHTML = window.masterPoli.map(p => `<tr><td class="font-mono text-xs text-slate-400">${p.id}</td><td class="font-black text-slate-800">${p.nama}</td><td class="font-black text-xl text-center bg-slate-50">${p.prefix}</td><td><span class="bg-${p.warna}-100 text-${p.warna}-800 px-3 py-1 rounded text-xs font-bold uppercase tracking-widest border border-${p.warna}-200">${p.warna}</span></td><td class="text-center"><button onclick="deletePoli('${p.id}')" class="bg-red-50 text-red-600 hover:bg-red-600 hover:text-white px-3 py-2 rounded-lg transition-colors"><i class="fas fa-trash"></i></button></td></tr>`).join('');
+        }
+
+        window.submitPoli = async (e) => {
+            e.preventDefault(); UI.loader(true, 'Menyimpan Poli...');
+            const p = { nama: document.getElementById('pl_nama').value, prefix: document.getElementById('pl_prefix').value.toUpperCase(), warna: document.getElementById('pl_warna').value };
+            try { 
+                const res = await ZettBackend.call('savePoli', p); UI.loader(false); 
+                if(res && res.status==='success') { 
+                    UI.toast('Poli berhasil ditambahkan!'); 
+                    document.getElementById('fPoli').reset(); 
+                    fetchAntrianRealtime(true, true); // Auto sync to update masterPoli globally
+                    setTimeout(loadPoliListLocal, 1500);
+                } else UI.toast(res?.message, true); 
+            } catch(err) { UI.loader(false); }
         };
-        window.submitStaff = async (e) => {
-            e.preventDefault(); UI.loader(true, 'Menyimpan Staff...');
-            const p = { nama: document.getElementById('st_nama').value, user: document.getElementById('st_user').value, pass: document.getElementById('st_pass').value, role: document.getElementById('st_role').value, poli: document.getElementById('st_poli').value, pendidikan: document.getElementById('st_pendidikan').value };
-            try { const res = await ZettBackend.call('saveStaff', p); UI.loader(false); if(res && res.status==='success') { UI.toast('Staff ditambahkan!'); document.getElementById('fStaff').reset(); loadStaffList(); } else UI.toast(res?.message, true); } catch(err) { UI.loader(false); }
+
+        window.deletePoli = async (id) => {
+            if(!confirm("Anda yakin ingin menghapus poli ini secara permanen?")) return;
+            UI.loader(true, 'Menghapus Poli...');
+            try { 
+                const res = await ZettBackend.call('deletePoli', id); UI.loader(false); 
+                if(res && res.status==='success') { 
+                    UI.toast('Poli berhasil dihapus!'); 
+                    fetchAntrianRealtime(true, true);
+                    setTimeout(loadPoliListLocal, 1500);
+                } else UI.toast(res?.message, true); 
+            } catch(err) { UI.loader(false); }
         };
 
     </script>
