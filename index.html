@@ -151,11 +151,12 @@
                     <i class="fas fa-search text-white text-xl hidden"></i>
                 </div>
                 <h3 class="font-black text-slate-800 text-xl tracking-tight">Verifikasi Live Tracking</h3>
-                <p class="text-xs text-slate-500 font-bold mt-2">Sistem mendeteksi Token Antrian. Masukkan Tgl Lahir Pasien untuk melihat berkas.</p>
+                <p class="text-xs text-slate-500 font-bold mt-2">Sistem mendeteksi Token Antrian. Masukkan Nama Lengkap Pasien untuk melihat berkas.</p>
             </div>
             <form onsubmit="verifyLiveTracking(event)" class="space-y-4">
                 <input type="hidden" id="track_token">
-                <div><label>Tanggal Lahir Pasien * (Abaikan untuk Demo)</label><input type="date" id="track_dob" class="input-med"></div>
+                <!-- UPGRADE 19.0: Ganti Tgl Lahir jadi Nama Lengkap -->
+                <div><label>Nama Lengkap Pasien * (Abaikan untuk Demo)</label><input type="text" id="track_nama" class="input-med" placeholder="Contoh: Budi Santoso"></div>
                 <div class="flex gap-3 mt-4">
                     <button type="button" onclick="UI.closeTrackingModal()" class="w-1/3 bg-slate-100 text-slate-600 font-black py-3 rounded-xl hover:bg-slate-200 transition-colors text-xs tracking-widest">BATAL</button>
                     <button type="submit" class="flex-1 bg-brand text-white font-black py-3 rounded-xl hover:bg-branddark shadow-lg shadow-brand/30 transition-transform hover:-translate-y-1 text-xs tracking-widest">BUKA TRACKER</button>
@@ -230,11 +231,11 @@
                 <button type="submit" class="w-full bg-white text-brand font-black tracking-widest py-4 mt-2 rounded-2xl shadow-xl hover:bg-slate-100 transition-all transform hover:-translate-y-1">MASUK <i class="fas fa-arrow-right ml-1"></i></button>
             </form>
             
-            <!-- Login Pasien -->
+            <!-- Login Pasien (UPGRADE: Ganti Input Tgl Lahir menjadi Nama Lengkap) -->
             <form id="formPasien" onsubmit="handleLoginPasien(event)" class="space-y-5 hidden relative z-20">
-                <div class="bg-black/20 border border-white/10 p-4 rounded-2xl text-center mb-2 backdrop-blur-sm"><p class="text-[11px] sm:text-xs text-blue-100 font-bold leading-relaxed">Verifikasi identitas menggunakan Nomor Rekam Medis (RM) dan Tanggal Lahir.</p></div>
+                <div class="bg-black/20 border border-white/10 p-4 rounded-2xl text-center mb-2 backdrop-blur-sm"><p class="text-[11px] sm:text-xs text-blue-100 font-bold leading-relaxed">Verifikasi identitas menggunakan Nomor Rekam Medis (RM) dan Nama Lengkap.</p></div>
                 <div><div class="relative"><i class="fas fa-id-card absolute left-4 top-[18px] text-white/60 text-lg"></i><input type="text" id="p_rm" class="w-full pl-12 pr-4 py-4 border border-white/20 rounded-2xl bg-black/20 text-white focus:bg-white/90 focus:text-brand focus:border-white outline-none transition-all font-bold placeholder-white/50 backdrop-blur-md uppercase" required placeholder="RM-XXXX-XXXX"></div></div>
-                <div><div class="relative"><i class="fas fa-calendar absolute left-4 top-[18px] text-white/60 text-lg"></i><input type="date" id="p_dob" class="w-full pl-12 pr-4 py-4 border border-white/20 rounded-2xl bg-black/20 text-white focus:bg-white/90 focus:text-brand focus:border-white outline-none transition-all font-bold placeholder-white/50 backdrop-blur-md" required></div></div>
+                <div><div class="relative"><i class="fas fa-user absolute left-4 top-[18px] text-white/60 text-lg"></i><input type="text" id="p_nama" class="w-full pl-12 pr-4 py-4 border border-white/20 rounded-2xl bg-black/20 text-white focus:bg-white/90 focus:text-brand focus:border-white outline-none transition-all font-bold placeholder-white/50 backdrop-blur-md" required placeholder="Nama Lengkap Sesuai Pendaftaran"></div></div>
                 <button type="submit" class="w-full bg-white text-brand font-black tracking-widest py-4 mt-2 rounded-2xl shadow-xl hover:bg-slate-100 transition-all transform hover:-translate-y-1">BUKA BERKAS</button>
             </form>
 
@@ -684,51 +685,12 @@
             UI.loader(true, 'Mencari Berkas di Database...');
             try {
                 let rmVal = document.getElementById('p_rm').value.trim();
-                let rawDate = document.getElementById('p_dob').value; 
+                let namaVal = document.getElementById('p_nama').value.trim(); 
                 
-                // --- PINTAR DATE BYPASS: Mengakali Backend Code.gs ---
-                // Code.gs v17 melakukan tglLahir.split('-'). Dan membaliknya jika length === 3.
-                // HTML selalu mengirim input YYYY-MM-DD.
+                // Murni Bypass Ke Backend
+                let res = await ZettBackend.call('loginPasien', rmVal, namaVal); 
                 
-                let parts = rawDate.split('-');
-                if(parts.length !== 3) {
-                    UI.loader(false);
-                    return UI.toast('Format tanggal browser tidak valid.', true);
-                }
-                
-                let y = parts[0];
-                let m = parts[1];
-                let d = parts[2];
-                
-                let dNoPad = parseInt(d, 10).toString();
-                let mNoPad = parseInt(m, 10).toString();
-
-                // Kita tembak semua variasi format tanggal yang mungkin ada di dalam sheet
-                let datePayloads = [
-                    `${y}-${m}-${d}`,           // 1. Kalo backend ngecek string DD-MM-YYYY (Karna backend ngebuka raw YYYY-MM-DD jadi DD-MM-YYYY)
-                    `${d}-${m}-${y}`,           // 2. Kalo backend ngecek string YYYY-MM-DD (Karna backend ngebuka DD-MM-YYYY jadi YYYY-MM-DD)
-                    `${d}/${m}/${y}`,           // 3. Kalo sheet isinya DD/MM/YYYY (Slash tidak dibalik oleh backend)
-                    `${y}/${m}/${d}`,           // 4. Kalo sheet isinya YYYY/MM/DD
-                    `${dNoPad}-${mNoPad}-${y}`, // 5. Kalo sheet isinya 2-2-2000 dibalik backend
-                    `${y}-${mNoPad}-${dNoPad}`, // 6. Kalo sheet isinya 2000-2-2 dibalik backend
-                    `${dNoPad}/${mNoPad}/${y}`, // 7. Kalo sheet isinya 2/2/2000
-                    rawDate                     // 8. Fallback darurat
-                ];
-
-                let loginBerhasil = false;
-                let finalRes = null;
-
-                // Tembakan Brute Force
-                for (let i = 0; i < datePayloads.length; i++) {
-                    let attemptRes = await ZettBackend.call('loginPasien', rmVal, datePayloads[i]);
-                    if (attemptRes && attemptRes.status === 'success' && attemptRes.pasien) {
-                        loginBerhasil = true;
-                        finalRes = attemptRes;
-                        break;
-                    }
-                }
-                
-                if(loginBerhasil && finalRes) {
+                if(res && res.status === 'success' && res.pasien) {
                     // Update URL agar terkesan modern tanpa reload
                     window.history.pushState({}, '', '/portal-pasien');
 
@@ -743,19 +705,19 @@
                         document.getElementById('liveTrackingCard').classList.add('hidden'); // Hide live tracking if manual login
                         
                         try {
-                            document.getElementById('pasienPortalName').textContent = (finalRes.pasien.nama || 'Pasien') + ' (' + (finalRes.pasien.rm || '') + ')';
+                            document.getElementById('pasienPortalName').textContent = (res.pasien.nama || 'Pasien') + ' (' + (res.pasien.rm || '') + ')';
                             const hl = document.getElementById('pasienHistoryList');
-                            if(!finalRes.history || !Array.isArray(finalRes.history) || finalRes.history.length === 0) {
+                            if(!res.history || !Array.isArray(res.history) || res.history.length === 0) {
                                 hl.innerHTML = '<div class="bg-slate-50 border border-slate-200 p-6 rounded-2xl text-center"><i class="fas fa-folder-open text-slate-300 text-3xl mb-2"></i><p class="text-sm text-slate-500 font-bold">Belum ada riwayat medis.</p></div>';
                             } else {
-                                hl.innerHTML = finalRes.history.map(h => `<div class="bg-white p-5 rounded-2xl border border-slate-100 hover:border-brand hover:shadow-md transition-all group"><div class="flex justify-between items-center mb-3"><span class="text-xs font-black text-slate-400 uppercase tracking-wider"><i class="far fa-calendar-alt mr-1"></i> ${h.tgl}</span> <span class="text-xs font-black text-brand bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100"><i class="fas fa-user-md mr-1"></i> ${h.dokter}</span></div><p class="font-black text-slate-700 text-lg group-hover:text-brand transition-colors">${h.diag}</p></div>`).join('');
+                                hl.innerHTML = res.history.map(h => `<div class="bg-white p-5 rounded-2xl border border-slate-100 hover:border-brand hover:shadow-md transition-all group"><div class="flex justify-between items-center mb-3"><span class="text-xs font-black text-slate-400 uppercase tracking-wider"><i class="far fa-calendar-alt mr-1"></i> ${h.tgl}</span> <span class="text-xs font-black text-brand bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100"><i class="fas fa-user-md mr-1"></i> ${h.dokter}</span></div><p class="font-black text-slate-700 text-lg group-hover:text-brand transition-colors">${h.diag}</p></div>`).join('');
                             }
                         } catch(e) { console.error(e); }
                         UI.loader(false);
                     }, 500);
                 } else { 
                     UI.loader(false); 
-                    UI.customAlert('Akses Ditolak', finalRes?.message || 'Data pasien tidak ditemukan. Pastikan Nomor RM dan Tanggal Lahir sesuai dengan bukti pendaftaran di database.'); 
+                    UI.customAlert('Akses Ditolak', res?.message || 'Data pasien tidak ditemukan. Pastikan Nomor RM dan Nama Lengkap sesuai dengan identitas pendaftaran.'); 
                 }
             } catch (error) { UI.loader(false); UI.toast('API Error: ' + error.message, true); }
         }
