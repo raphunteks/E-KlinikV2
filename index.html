@@ -202,8 +202,8 @@
             <div class="absolute -bottom-32 -right-32 w-96 h-96 bg-emerald-500 rounded-full opacity-30 blur-[100px]"></div>
         </div>
 
-        <!-- UPGRADE: max-w diperbesar ke 520px untuk mencegah tab terjepit/memanjang ke bawah -->
-        <div class="bg-white/10 backdrop-blur-2xl w-full max-w-[520px] p-6 sm:p-10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/20 relative z-10 my-8 mx-2">
+        <!-- UPGRADE: max-w diperbesar ke 550px untuk mencegah tab terjepit, form lebih lega proporsional -->
+        <div class="bg-white/10 backdrop-blur-2xl w-full max-w-[550px] p-6 sm:p-10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/20 relative z-10 my-8 mx-2 sm:mx-4">
             <div id="apiWarning" class="hidden bg-red-500/20 border border-red-400 text-white p-3 rounded-xl mb-6 text-xs font-bold text-center backdrop-blur-md">
                 ⚠️ URL Google Apps Script belum diatur (GAS_URL)!
             </div>
@@ -217,10 +217,10 @@
             </div>
             
             <!-- RESPONSIVE LOGIN TABS UPGRADE (IOS SEGMENTED CONTROL STYLE) -->
-            <div class="grid grid-cols-3 gap-1 mb-8 bg-black/30 p-1.5 rounded-[1.25rem] border border-white/10 backdrop-blur-md relative z-20">
-                <button type="button" onclick="switchTab('staff')" id="tabStaff" class="w-full py-3 rounded-xl shadow-[0_4px_15px_rgb(0,0,0,0.12)] bg-white text-[11px] sm:text-sm font-black text-brand transition-all duration-300 outline-none transform scale-100 whitespace-nowrap">STAF MEDIS</button>
-                <button type="button" onclick="switchTab('pasien')" id="tabPasien" class="w-full py-3 rounded-xl text-[11px] sm:text-sm font-black text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300 outline-none bg-transparent transform scale-95 hover:scale-100 whitespace-nowrap">PASIEN</button>
-                <button type="button" onclick="switchTab('online')" id="tabOnline" class="w-full py-3 rounded-xl text-[11px] sm:text-sm font-black text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300 outline-none bg-transparent transform scale-95 hover:scale-100 whitespace-nowrap">DAFTAR</button>
+            <div class="grid grid-cols-3 gap-1.5 mb-8 bg-black/30 p-1.5 rounded-[1.25rem] border border-white/10 backdrop-blur-md relative z-20">
+                <button type="button" onclick="switchTab('staff')" id="tabStaff" class="w-full py-3 px-1 rounded-xl shadow-[0_4px_15px_rgb(0,0,0,0.12)] bg-white text-[11px] sm:text-sm font-black text-brand transition-all duration-300 outline-none transform scale-100 whitespace-nowrap">STAF MEDIS</button>
+                <button type="button" onclick="switchTab('pasien')" id="tabPasien" class="w-full py-3 px-1 rounded-xl text-[11px] sm:text-sm font-black text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300 outline-none bg-transparent transform scale-95 hover:scale-100 whitespace-nowrap">PASIEN</button>
+                <button type="button" onclick="switchTab('online')" id="tabOnline" class="w-full py-3 px-1 rounded-xl text-[11px] sm:text-sm font-black text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300 outline-none bg-transparent transform scale-95 hover:scale-100 whitespace-nowrap">DAFTAR</button>
             </div>
             
             <!-- Login Staff -->
@@ -684,37 +684,51 @@
             UI.loader(true, 'Mencari Berkas di Database...');
             try {
                 let rmVal = document.getElementById('p_rm').value.trim();
-                let rawDate = document.getElementById('p_dob').value;
+                let rawDate = document.getElementById('p_dob').value; 
                 
-                // Murni Bypass Ke Backend
-                // Backend V17.0 sudah memodifikasi tglLahir di dalamnya (split '-' dan mapping ulang)
-                // Kita berikan perlindungan Smart Retry (Brute Force 3 Format Tanggal) di sisi Client
+                // --- PINTAR DATE BYPASS: Mengakali Backend Code.gs ---
+                // Code.gs v17 melakukan tglLahir.split('-'). Dan membaliknya jika length === 3.
+                // HTML selalu mengirim input YYYY-MM-DD.
                 
-                // 1. Coba Format Asli (YYYY-MM-DD dari Input Date HTML)
-                let res = await ZettBackend.call('loginPasien', rmVal, rawDate); 
+                let parts = rawDate.split('-');
+                if(parts.length !== 3) {
+                    UI.loader(false);
+                    return UI.toast('Format tanggal browser tidak valid.', true);
+                }
                 
-                // 2. Fallback jika format "YYYY-MM-DD" gagal mencocokkan string di Backend
-                if(res && res.status === 'error') {
-                    let parts = rawDate.split('-');
-                    if(parts.length === 3) {
-                        // Coba Format: DD-MM-YYYY
-                        let fallbackDate1 = `${parts[2]}-${parts[1]}-${parts[0]}`;
-                        let resFallback1 = await ZettBackend.call('loginPasien', rmVal, fallbackDate1);
-                        
-                        if(resFallback1.status === 'success') {
-                            res = resFallback1;
-                        } else {
-                            // Coba Format Terakhir: DD/MM/YYYY
-                            let fallbackDate2 = `${parts[2]}/${parts[1]}/${parts[0]}`;
-                            let resFallback2 = await ZettBackend.call('loginPasien', rmVal, fallbackDate2);
-                            if(resFallback2.status === 'success') {
-                                res = resFallback2;
-                            }
-                        }
+                let y = parts[0];
+                let m = parts[1];
+                let d = parts[2];
+                
+                let dNoPad = parseInt(d, 10).toString();
+                let mNoPad = parseInt(m, 10).toString();
+
+                // Kita tembak semua variasi format tanggal yang mungkin ada di dalam sheet
+                let datePayloads = [
+                    `${y}-${m}-${d}`,           // 1. Kalo backend ngecek string DD-MM-YYYY (Karna backend ngebuka raw YYYY-MM-DD jadi DD-MM-YYYY)
+                    `${d}-${m}-${y}`,           // 2. Kalo backend ngecek string YYYY-MM-DD (Karna backend ngebuka DD-MM-YYYY jadi YYYY-MM-DD)
+                    `${d}/${m}/${y}`,           // 3. Kalo sheet isinya DD/MM/YYYY (Slash tidak dibalik oleh backend)
+                    `${y}/${m}/${d}`,           // 4. Kalo sheet isinya YYYY/MM/DD
+                    `${dNoPad}-${mNoPad}-${y}`, // 5. Kalo sheet isinya 2-2-2000 dibalik backend
+                    `${y}-${mNoPad}-${dNoPad}`, // 6. Kalo sheet isinya 2000-2-2 dibalik backend
+                    `${dNoPad}/${mNoPad}/${y}`, // 7. Kalo sheet isinya 2/2/2000
+                    rawDate                     // 8. Fallback darurat
+                ];
+
+                let loginBerhasil = false;
+                let finalRes = null;
+
+                // Tembakan Brute Force
+                for (let i = 0; i < datePayloads.length; i++) {
+                    let attemptRes = await ZettBackend.call('loginPasien', rmVal, datePayloads[i]);
+                    if (attemptRes && attemptRes.status === 'success' && attemptRes.pasien) {
+                        loginBerhasil = true;
+                        finalRes = attemptRes;
+                        break;
                     }
                 }
                 
-                if(res && res.status === 'success' && res.pasien) {
+                if(loginBerhasil && finalRes) {
                     // Update URL agar terkesan modern tanpa reload
                     window.history.pushState({}, '', '/portal-pasien');
 
@@ -729,19 +743,19 @@
                         document.getElementById('liveTrackingCard').classList.add('hidden'); // Hide live tracking if manual login
                         
                         try {
-                            document.getElementById('pasienPortalName').textContent = (res.pasien.nama || 'Pasien') + ' (' + (res.pasien.rm || '') + ')';
+                            document.getElementById('pasienPortalName').textContent = (finalRes.pasien.nama || 'Pasien') + ' (' + (finalRes.pasien.rm || '') + ')';
                             const hl = document.getElementById('pasienHistoryList');
-                            if(!res.history || !Array.isArray(res.history) || res.history.length === 0) {
+                            if(!finalRes.history || !Array.isArray(finalRes.history) || finalRes.history.length === 0) {
                                 hl.innerHTML = '<div class="bg-slate-50 border border-slate-200 p-6 rounded-2xl text-center"><i class="fas fa-folder-open text-slate-300 text-3xl mb-2"></i><p class="text-sm text-slate-500 font-bold">Belum ada riwayat medis.</p></div>';
                             } else {
-                                hl.innerHTML = res.history.map(h => `<div class="bg-white p-5 rounded-2xl border border-slate-100 hover:border-brand hover:shadow-md transition-all group"><div class="flex justify-between items-center mb-3"><span class="text-xs font-black text-slate-400 uppercase tracking-wider"><i class="far fa-calendar-alt mr-1"></i> ${h.tgl}</span> <span class="text-xs font-black text-brand bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100"><i class="fas fa-user-md mr-1"></i> ${h.dokter}</span></div><p class="font-black text-slate-700 text-lg group-hover:text-brand transition-colors">${h.diag}</p></div>`).join('');
+                                hl.innerHTML = finalRes.history.map(h => `<div class="bg-white p-5 rounded-2xl border border-slate-100 hover:border-brand hover:shadow-md transition-all group"><div class="flex justify-between items-center mb-3"><span class="text-xs font-black text-slate-400 uppercase tracking-wider"><i class="far fa-calendar-alt mr-1"></i> ${h.tgl}</span> <span class="text-xs font-black text-brand bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100"><i class="fas fa-user-md mr-1"></i> ${h.dokter}</span></div><p class="font-black text-slate-700 text-lg group-hover:text-brand transition-colors">${h.diag}</p></div>`).join('');
                             }
                         } catch(e) { console.error(e); }
                         UI.loader(false);
                     }, 500);
                 } else { 
                     UI.loader(false); 
-                    UI.customAlert('Akses Ditolak', res?.message || 'Data pasien tidak ditemukan. Pastikan Nomor RM dan Tanggal Lahir sesuai dengan bukti pendaftaran.'); 
+                    UI.customAlert('Akses Ditolak', finalRes?.message || 'Data pasien tidak ditemukan. Pastikan Nomor RM dan Tanggal Lahir sesuai dengan bukti pendaftaran di database.'); 
                 }
             } catch (error) { UI.loader(false); UI.toast('API Error: ' + error.message, true); }
         }
